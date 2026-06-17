@@ -35,3 +35,32 @@ This document tracks every assumption, heuristic, and data limitation relevant t
 2. **`requires_road_closure` as boolean:** Treated as a binary indicator. True = road closure needed, False = not needed.
 
 3. **Corridor centroids:** We assume that computing mean(lat, lon) per corridor gives a reasonable centroid for adjacency calculations. This is a simplification — corridors are linear, not circular.
+
+---
+
+## Phase 1 — Cleaning & Feature Engineering
+
+### Cleaning Decisions
+
+1. **Event cause normalization:** `Debris` (12 rows) merged with `debris` (1 row) → `debris` (13 rows). `test_demo` (3 rows) and `fog_low_visibility` (2 rows) merged into `others` as they had fewer than 5 occurrences and aren't actionable for the theme.
+
+2. **Duration outlier filter:** Duration-to-close values are capped at 7 days (10,080 min). Records exceeding this are likely stale administrative closures (e.g., a pothole event that stayed "active" for weeks before bulk-close). The median with this filter is ~52 min, which aligns better with operational reality.
+
+3. **Coordinate cleaning:** 2 rows had `endlatitude` values around 59.86 and `endlongitude` around 62.7 — clearly not in Bengaluru (lat ~12.8-13.3, lon ~77.3-77.8). These were set to NaN. Additionally, `endlatitude`/`endlongitude` == 0 (used as missing marker) was converted to NaN.
+
+4. **IST time features:** All hour/day features are derived from IST (UTC+5:30), not UTC, since user-facing displays and operational decisions are in local time.
+
+### Severity Tier Logic
+
+The severity tier is a synthetic label derived from available data:
+- **High:** priority=High AND (duration > 120 min OR requires_road_closure=True)
+- **Medium:** priority=High AND 0 < duration ≤ 120 min, OR priority=Low AND duration > 60 min
+- **Low:** everything else (including events with unknown duration)
+
+This is a heuristic — not ground truth. Real severity depends on factors not in the data (road width, traffic volume, number of affected lanes, proximity to hospitals/schools, etc.).
+
+### Corridor Adjacency
+
+- Adjacency is computed using haversine distance between corridor centroids.
+- Top 5 nearest neighbors stored per corridor.
+- This is a simplification: corridors are road segments, not points. Two corridors might be geographically close by centroid but not connected by road. We accept this for the prototype.
