@@ -1,0 +1,111 @@
+corridor,neighbor_corridor,rank,distance_km,neighbor_event_count
+Airport New South Road,ORR North 1,1,0.54,275
+Airport New South Road,Hennur Main Road,2,2.74,96
+Airport New South Road,Old Madras Road,3,5.2,263
+Airport New South Road,Bellary Road 1,4,5.24,610
+Airport New South Road,CBD 1,5,5.93,26
+Bannerghata Road,Hosur Road,1,3.6,298
+Bannerghata Road,ORR West 1,2,5.0,168
+Bannerghata Road,IRR(Thanisandra road),3,5.55,95
+Bannerghata Road,Mysore Road,4,7.77,743
+Bannerghata Road,ORR East 1,5,8.5,244
+Bellary Road 1,CBD 2,1,3.84,104
+Bellary Road 1,Non-corridor,2,4.01,3144
+Bellary Road 1,ORR North 2,3,4.09,235
+Bellary Road 1,CBD 1,4,4.55,26
+Bellary Road 1,Airport New South Road,5,5.24,67
+Bellary Road 2,Hennur Main Road,1,6.58,96
+Bellary Road 2,ORR North 2,2,8.59,235
+Bellary Road 2,Airport New South Road,3,9.32,67
+Bellary Road 2,ORR North 1,4,9.78,275
+Bellary Road 2,Bellary Road 1,5,10.08,610
+CBD 1,Non-corridor,1,0.89,3144
+CBD 1,CBD 2,2,1.3,104
+CBD 1,Old Madras Road,3,2.44,263
+CBD 1,Bellary Road 1,4,4.55,610
+CBD 1,IRR(Thanisandra road),5,5.31,95
+CBD 2,Non-corridor,1,0.41,3144
+CBD 2,CBD 1,2,1.3,26
+CBD 2,Old Madras Road,3,3.72,263
+CBD 2,Bellary Road 1,4,3.84,610
+CBD 2,Mysore Road,5,4.43,743
+Hennur Main Road,Airport New South Road,1,2.74,67
+Hennur Main Road,ORR North 1,2,3.2,275
+Hennur Main Road,Bellary Road 1,3,5.76,610
+Hennur Main Road,Bellary Road 2,4,6.58,379
+Hennur Main Road,ORR North 2,5,7.37,235
+Hosur Road,IRR(Thanisandra road),1,2.46,95
+Hosur Road,Bannerghata Road,2,3.6,209
+Hosur Road,ORR East 1,3,5.03,244
+Hosur Road,Old Airport Road,4,6.29,76
+Hosur Road,ORR West 1,5,7.13,168
+IRR(Thanisandra road),Hosur Road,1,2.46,298
+IRR(Thanisandra road),Old Airport Road,2,4.47,76
+IRR(Thanisandra road),ORR East 1,3,4.68,244
+IRR(Thanisandra road),Old Madras Road,4,4.83,263
+IRR(Thanisandra road),CBD 1,5,5.31,26
+Magadi Road,West of Chord Road,1,2.5,174
+Magadi Road,Tumkur Road,2,5.28,458
+Magadi Road,Mysore Road,3,5.32,743
+Magadi Road,ORR North 2,4,7.4,235
+Magadi Road,Bellary Road 1,5,7.69,610
+Mysore Road,West of Chord Road,1,3.37,174
+Mysore Road,ORR West 1,2,4.14,168
+Mysore Road,CBD 2,3,4.43,104
+Mysore Road,Non-corridor,4,4.72,3144
+Mysore Road,Magadi Road,5,5.32,245
+Non-corridor,CBD 2,1,0.41,104
+Non-corridor,CBD 1,2,0.89,26
+Non-corridor,Old Madras Road,3,3.31,263
+Non-corridor,Bellary Road 1,4,4.01,610
+Non-corridor,Mysore Road,5,4.72,743
+ORR East 1,Old Airport Road,1,3.49,76
+ORR East 1,IRR(Thanisandra road),2,4.68,95
+ORR East 1,Hosur Road,3,5.03,298
+ORR East 1,Varthur Road,4,5.97,77
+ORR East 1,ORR East 2,5,6.04,187
+ORR East 2,Varthur Road,1,3.04,77
+ORR East 2,Old Airport Road,2,4.16,76
+ORR East 2,ORR East 1,3,6.04,244
+ORR East 2,Old Madras Road,4,7.25,263
+ORR East 2,ORR North 1,5,8.34,275
+ORR North 1,Airport New South Road,1,0.54,67
+ORR North 1,Hennur Main Road,2,3.2,96
+ORR North 1,Old Madras Road,3,4.93,263
+ORR North 1,Bellary Road 1,4,5.6,610
+ORR North 1,CBD 1,5,5.87,26
+ORR North 2,Tumkur Road,1,2.96,458
+ORR North 2,Bellary Road 1,2,4.09,610
+ORR North 2,West of Chord Road,3,6.69,174
+ORR North 2,Hennur Main Road,4,7.37,96
+ORR North 2,Magadi Road,5,7.4,245
+ORR West 1,Mysore Road,1,4.14,743
+ORR West 1,Bannerghata Road,2,5.0,209
+ORR West 1,West of Chord Road,3,7.05,174
+ORR West 1,Hosur Road,4,7.13,298
+ORR West 1,IRR(Thanisandra road),5,7.58,95
+Old Airport Road,ORR East 1,1,3.49,244
+Old Airport Road,ORR East 2,2,4.16,187
+Old Airport Road,Old Madras Road,3,4.29,263
+Old Airport Road,IRR(Thanisandra road),4,4.47,95
+Old Airport Road,Varthur Road,5,5.87,77
+Old Madras Road,CBD 1,1,2.44,26
+Old Madras Road,Non-corridor,2,3.31,3144
+Old Madras Road,CBD 2,3,3.72,104
+Old Madras Road,Old Airport Road,4,4.29,76
+Old Madras Road,IRR(Thanisandra road),5,4.83,95
+Tumkur Road,ORR North 2,1,2.96,235
+Tumkur Road,Magadi Road,2,5.28,245
+Tumkur Road,West of Chord Road,3,5.56,174
+Tumkur Road,Bellary Road 1,4,5.94,610
+Tumkur Road,CBD 2,5,8.54,104
+Varthur Road,ORR East 2,1,3.04,187
+Varthur Road,Old Airport Road,2,5.87,76
+Varthur Road,ORR East 1,3,5.97,244
+Varthur Road,Old Madras Road,4,9.77,263
+Varthur Road,IRR(Thanisandra road),5,9.87,95
+West of Chord Road,Magadi Road,1,2.5,245
+West of Chord Road,Mysore Road,2,3.37,743
+West of Chord Road,CBD 2,3,5.28,104
+West of Chord Road,Tumkur Road,4,5.56,458
+West of Chord Road,Non-corridor,5,5.69,3144

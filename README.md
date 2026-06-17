@@ -35,7 +35,7 @@ See `data/processed/data_audit.md` for the full data audit report.
 | Phase | Description | Status |
 |-------|------------|--------|
 | 0 | Scaffolding & Data Audit | ✅ Complete |
-| 1 | Cleaning & Feature Engineering | ⬜ Pending |
+| 1 | Cleaning & Feature Engineering | ✅ Complete |
 | 2 | Impact Forecasting Engine | ⬜ Pending |
 | 3 | Resource Recommendation Engine | ⬜ Pending |
 | 4 | Backend API | ⬜ Pending |
@@ -50,8 +50,44 @@ See `data/processed/data_audit.md` for the full data audit report.
 pip install -r requirements.txt
 
 # Run data audit
-python backend/data_audit.py
+python3 backend/data_audit.py
+
+# Run cleaning & feature engineering
+python3 backend/data_cleaning.py
 ```
+
+## Phase 1 Outputs
+
+### Cleaning Operations
+- Event cause normalization: fixed `Debris`→`debris`, merged ultra-rare causes (<5 events) into `others`
+- Datetime parsing: all 6 datetime columns parsed to UTC
+- Coordinate cleaning: zeroed end-coordinates set to NaN, 2 out-of-range rows fixed
+- Missing corridor (20 rows) → `Non-corridor`, missing priority (2 rows) → `High`
+- Boolean conversion for `requires_road_closure`
+
+### Engineered Features
+| Feature | Description |
+|---------|-------------|
+| `hour_of_day` | Hour in IST (0–23) |
+| `day_of_week` | 0=Monday, 6=Sunday |
+| `is_weekend` | Binary flag |
+| `time_period` | morning_rush / midday / evening_rush / night |
+| `duration_to_close_min` | `closed_datetime − start_datetime` in minutes (filtered: >0 and ≤7 days) |
+| `severity_tier` | Low / Medium / High (from priority + duration + road_closure) |
+| `duration_bucket` | quick / moderate / extended / prolonged / unknown |
+| `is_event_driven` | Flag for theme-relevant causes |
+
+### Corridor Geography
+- `corridor_centroids.csv`: 22 corridor centroids (mean lat/lon)
+- `corridor_adjacency.csv`: Top-5 nearest neighbors per corridor (haversine distance)
+
+### EDA Charts (6 total, in `data/processed/eda_charts/`)
+1. Events by cause
+2. Events by hour of day (IST)
+3. Top 15 corridors by event count
+4. Duration-to-close distribution by cause
+5. Severity tier distribution by cause
+6. Event density heatmap (hour × day of week)
 
 ## Tech Stack
 
