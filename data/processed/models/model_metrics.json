@@ -1,0 +1,24 @@
+{
+  "severity_classifier": {
+    "model": "GradientBoostingClassifier",
+    "accuracy": 0.719,
+    "f1_macro": 0.562,
+    "f1_weighted": 0.6717,
+    "train_size": 6445,
+    "test_size": 1612,
+    "classes": [
+      "High",
+      "Low",
+      "Medium"
+    ]
+  },
+  "duration_regressor": {
+    "model": "GradientBoostingRegressor",
+    "mae_min": 366.0,
+    "median_ae_min": 34.0,
+    "r2_score": -0.0203,
+    "train_size": 2168,
+    "test_size": 543,
+    "target_log_transformed": true
+  }
+}

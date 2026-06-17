@@ -36,7 +36,7 @@ See `data/processed/data_audit.md` for the full data audit report.
 |-------|------------|--------|
 | 0 | Scaffolding & Data Audit | ✅ Complete |
 | 1 | Cleaning & Feature Engineering | ✅ Complete |
-| 2 | Impact Forecasting Engine | ⬜ Pending |
+| 2 | Impact Forecasting Engine | ✅ Complete |
 | 3 | Resource Recommendation Engine | ⬜ Pending |
 | 4 | Backend API | ⬜ Pending |
 | 5 | Dashboard Frontend | ⬜ Pending |
@@ -54,6 +54,12 @@ python3 backend/data_audit.py
 
 # Run cleaning & feature engineering
 python3 backend/data_cleaning.py
+
+# Train forecasting models
+python3 backend/forecasting.py
+
+# Run sample forecasts (after training)
+python3 backend/forecasting.py --test
 ```
 
 ## Phase 1 Outputs
@@ -88,6 +94,24 @@ python3 backend/data_cleaning.py
 4. Duration-to-close distribution by cause
 5. Severity tier distribution by cause
 6. Event density heatmap (hour × day of week)
+
+## Phase 2 — Forecasting Engine
+
+### Models
+
+| Model | Task | Key Metric | Notes |
+|-------|------|------------|-------|
+| GBT Severity Classifier | Low/Med/High tier | Accuracy 71.9%, F1(w) 0.67 | Trained on all 8,057 rows; `event_cause` and `requires_road_closure` are dominant features |
+| GBT Duration Regressor | Minutes to clear | Median AE 34 min, MAE 366 min | Trained on 2,711 rows with valid durations; log-transformed target. High MAE driven by long-tail causes (water_logging, construction) |
+| k-NN Analog Finder | Fallback for rare planned events | Cosine similarity | Returns 5 most similar past events for procession, public_event, vip_movement, protest |
+
+### Sample Forecast (procession on Bellary Road, Sunday morning, road closure)
+```
+Severity: High (99.1% confidence)
+Duration: 13.2 min (model) / 34.1 min median (analog)
+Method: knn_analog_fallback
+Analog range: 2.9–144.1 min from 5 similar past events
+```
 
 ## Tech Stack
 
