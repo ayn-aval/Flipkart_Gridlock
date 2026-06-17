@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (keep raw CSV in repo for hackathon reproducibility, but ignore large processed files)
+data/processed/*.parquet
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model artifacts are tracked (small enough for hackathon)
