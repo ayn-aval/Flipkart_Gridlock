@@ -39,16 +39,29 @@ See `data/processed/data_audit.md` for the full data audit report.
 | 2 | Impact Forecasting Engine | ✅ Complete |
 | 3 | Resource Recommendation Engine | ✅ Complete |
 | 4 | Backend API | ✅ Complete |
-| 5 | Dashboard Frontend | ⬜ Pending |
-| 6 | Real-Time Simulation + Learning Loop | ⬜ Pending |
-| 7 | Polish & Demo Readiness | ⬜ Pending |
+| 5 | Dashboard Frontend | ✅ Complete |
+| 6 | Real-Time Simulation + Learning Loop | ✅ Complete |
+| 7 | Polish & Demo Readiness | ✅ Complete |
 
-## Quick Start
+## Quick Start (Demo Mode)
+
+The easiest way to see the prototype in action is to use the demo script, which launches both the FastAPI backend and the Real-Time Event Simulator in the background:
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
+# Launch the prototype
+./run_demo.sh
+```
+
+Then open your browser to **http://localhost:8000/**.
+
+## Advanced Usage
+
+If you prefer to run components individually or train models from scratch:
+
+```bash
 # Run data audit
 python3 backend/data_audit.py
 
@@ -60,6 +73,9 @@ python3 backend/forecasting.py
 
 # Run sample forecasts (after training)
 python3 backend/forecasting.py --test
+
+# Run the API manually
+python3 -m uvicorn backend.api:app --port 8000
 ```
 
 ## Phase 1 Outputs

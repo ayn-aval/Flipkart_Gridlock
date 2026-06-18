@@ -60,6 +60,13 @@ async function apiFetch(path, options = {}) {
     return await res.json();
   } catch (e) {
     console.error(`API error: ${path}`, e);
+    // Update UI status to show error
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.getElementById('api-status');
+    if (statusDot && statusText) {
+      statusDot.style.background = '#ef4444';
+      statusText.textContent = 'API Connection Error';
+    }
     throw e;
   }
 }
@@ -685,7 +692,7 @@ async function loadLearningLoop() {
       const sevMatch = e.predicted_severity === e.actual_severity ? '✅' : '❌';
       
       return `
-        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <tr class="learning-log-row">
           <td style="padding: 8px 10px; color: var(--text-dim);">${time}</td>
           <td style="padding: 8px 10px; font-family: monospace;">${e.event_id}</td>
           <td style="padding: 8px 10px; color: ${sevColor};">${e.predicted_severity} / ${e.actual_severity} ${sevMatch}</td>
