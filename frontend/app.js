@@ -384,7 +384,7 @@ function createCircleMarker(point) {
       <strong>Corridor:</strong> ${point.corridor}<br/>
       <strong>Severity:</strong> <span style="color:${color}">${point.severity_tier}</span><br/>
       ${point.hour_of_day != null ? `<strong>Hour:</strong> ${String(point.hour_of_day).padStart(2, '0')}:00 IST<br/>` : ''}
-      ${point.requires_road_closure ? '<strong>🚧 Road Closure Required</strong><br/>' : ''}
+      ${point.requires_road_closure ? '<strong style="display:flex;align-items:center;gap:4px;color:var(--accent-amber);"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Road Closure Required</strong><br/>' : ''}
       ${point.description ? `<em>"${point.description}"</em>` : ''}
     </div>
   `;
@@ -396,7 +396,8 @@ async function refreshMap() {
   if (!map) return;
   const btn = document.getElementById('map-refresh-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Loading...';
+  btn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;height:16px;"></i> Loading...';
+  if (window.lucide) lucide.createIcons();
 
   try {
     const cause = document.getElementById('map-filter-cause').value;
@@ -415,9 +416,11 @@ async function refreshMap() {
       markerCluster.addLayer(createCircleMarker(p));
     });
 
-    btn.textContent = `🔄 ${data.count} events`;
+    btn.innerHTML = `<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> ${data.count} events`;
+    if (window.lucide) lucide.createIcons();
   } catch (e) {
-    btn.textContent = '❌ Error';
+    btn.innerHTML = '<i data-lucide="x-circle" style="width:16px;height:16px;"></i> Error';
+    if (window.lucide) lucide.createIcons();
   } finally {
     btn.disabled = false;
   }
@@ -455,7 +458,8 @@ async function runSimulation(e) {
 
   const btn = document.getElementById('sim-submit-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Forecasting...';
+  btn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;height:16px;"></i> Forecasting...';
+  if (window.lucide) lucide.createIcons();
 
   try {
     const payload = {
@@ -477,14 +481,16 @@ async function runSimulation(e) {
     renderForecastResults(result);
   } catch (err) {
     document.getElementById('forecast-results').innerHTML = `
-      <div class="card" style="border-color: var(--severity-high);">
-        <h3 class="text-rose">❌ Forecast Error</h3>
-        <p class="text-muted">${err.message}</p>
+      <div class="empty-state">
+        <h3 class="text-rose" style="display:flex;align-items:center;justify-content:center;gap:8px;"><i data-lucide="x-circle"></i> Forecast Error</h3>
+        <p class="text-muted mt-4">${err.message}</p>
       </div>
     `;
+    if (window.lucide) lucide.createIcons();
   } finally {
     btn.disabled = false;
-    btn.textContent = '⚡ Run Forecast';
+    btn.innerHTML = '<i data-lucide="play" style="width:16px;height:16px;"></i> Run Forecast';
+    if (window.lucide) lucide.createIcons();
   }
 }
 
@@ -510,7 +516,7 @@ function renderForecastResults(result) {
   // Build diversions HTML
   const diversionsHtml = r.diversion_suggestions.map(d => `
     <div class="diversion-card">
-      <span class="diversion-icon">🔀</span>
+      <span class="diversion-icon"><i data-lucide="shuffle" style="width:18px;height:18px;"></i></span>
       <div>
         <div class="diversion-name">${d.corridor}</div>
         <div class="diversion-detail">${d.rationale}</div>
@@ -533,12 +539,11 @@ function renderForecastResults(result) {
   container.innerHTML = `
     <!-- Severity & Duration -->
     <div class="result-section">
-      <div class="result-section-title">📊 Forecast Result</div>
+      <div class="result-section-title"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> Forecast Result</div>
       <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <span class="severity-badge ${severityClass}">
-          ${f.severity_tier === 'High' ? '🔴' : f.severity_tier === 'Medium' ? '🟡' : '🟢'}
-          ${f.severity_tier} Severity
-        </span>
+        <div class="severity-badge ${severityClass}">
+          <i data-lucide="alert-circle" style="width:16px;height:16px;"></i> ${f.severity_tier} Severity
+        </div>
         <span class="text-muted" style="font-size: 0.8rem;">
           Method: <strong>${f.method === 'knn_analog_fallback' ? 'k-NN Analog Fallback' : 'GBT Model'}</strong>
         </span>
@@ -565,7 +570,7 @@ function renderForecastResults(result) {
 
     <!-- Resource Recommendation -->
     <div class="result-section">
-      <div class="result-section-title">👮 Resource Recommendation</div>
+      <div class="result-section-title"><i data-lucide="shield" style="width:16px;height:16px;"></i> Resource Recommendation</div>
       <div class="metric-grid">
         <div class="metric-item">
           <span class="metric-label">Officers Required</span>
@@ -583,25 +588,26 @@ function renderForecastResults(result) {
 
     <!-- Action Checklist -->
     <div class="result-section">
-      <div class="result-section-title">✅ Action Checklist</div>
+      <div class="result-section-title"><i data-lucide="check-square" style="width:16px;height:16px;"></i> Action Checklist</div>
       <ul class="action-list">${actionsHtml}</ul>
     </div>
 
     <!-- Diversion Suggestions -->
     <div class="result-section">
-      <div class="result-section-title">🔀 Diversion Suggestions</div>
+      <div class="result-section-title"><i data-lucide="shuffle" style="width:16px;height:16px;"></i> Diversion Suggestions</div>
       <div class="diversion-list">${diversionsHtml}</div>
     </div>
 
     <!-- Similar Past Events -->
     <div class="result-section">
-      <div class="result-section-title">📋 Similar Historical Events</div>
+      <div class="result-section-title"><i data-lucide="history" style="width:16px;height:16px;"></i> Similar Historical Events</div>
       ${similarHtml}
     </div>
 
     <!-- Disclaimer -->
     <div class="disclaimer">${r.disclaimer}</div>
   `;
+  if (window.lucide) lucide.createIcons();
 }
 
 
@@ -689,17 +695,19 @@ async function loadLearningLoop() {
     tbody.innerHTML = log.entries.map(e => {
       const time = new Date(e.timestamp).toLocaleTimeString();
       const sevColor = e.predicted_severity === e.actual_severity ? 'var(--text-primary)' : 'var(--accent-orange)';
-      const sevMatch = e.predicted_severity === e.actual_severity ? '✅' : '❌';
+      const sevMatch = e.predicted_severity === e.actual_severity ? '<i data-lucide="check" style="width:14px;height:14px;"></i>' : '<i data-lucide="x" style="width:14px;height:14px;"></i>';
       
       return `
         <tr class="learning-log-row">
           <td style="padding: 8px 10px; color: var(--text-dim);">${time}</td>
           <td style="padding: 8px 10px; font-family: monospace;">${e.event_id}</td>
-          <td style="padding: 8px 10px; color: ${sevColor};">${e.predicted_severity} / ${e.actual_severity} ${sevMatch}</td>
+          <td style="padding: 8px 10px; color: ${sevColor}; display:flex; align-items:center; gap:4px;">${e.predicted_severity} / ${e.actual_severity} ${sevMatch}</td>
           <td style="padding: 8px 10px;">${e.predicted_duration_min} / ${e.actual_duration_min}</td>
         </tr>
       `;
     }).join('');
+
+    if (window.lucide) lucide.createIcons();
 
   } catch (e) {
     console.warn('Learning loop fetch failed', e);
