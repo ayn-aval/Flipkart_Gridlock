@@ -13,6 +13,7 @@ const API_BASE = 'http://localhost:8000';
 // ─── Tab Navigation ──────────────────────────────────────────────────────────
 
 let mapInitialized = false;
+let learningPoller = null;
 
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -29,6 +30,19 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     if (tab.dataset.tab === 'map' && !mapInitialized) {
       initMap();
       mapInitialized = true;
+    }
+
+    // Handle learning loop polling
+    if (tab.dataset.tab === 'learning') {
+      loadLearningLoop();
+      if (!learningPoller) {
+        learningPoller = setInterval(loadLearningLoop, 3000);
+      }
+    } else {
+      if (learningPoller) {
+        clearInterval(learningPoller);
+        learningPoller = null;
+      }
     }
   });
 });
@@ -233,6 +247,65 @@ function renderDoughnutChart(canvasId, { labels, values, colors }) {
         legend: {
           position: 'bottom',
           labels: { color: '#94a3b8', padding: 16, font: { size: 12 } },
+        },
+      },
+    },
+  });
+}
+
+function renderScatterChart(canvasId, { dataPoints }) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  
+  // Find max value for diagonal line
+  let maxVal = 10;
+  dataPoints.forEach(p => {
+    if (p.x > maxVal) maxVal = p.x;
+    if (p.y > maxVal) maxVal = p.y;
+  });
+  maxVal = Math.ceil(maxVal * 1.1);
+
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Predicted vs Actual',
+          data: dataPoints,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+        {
+          label: 'Ideal (x=y)',
+          data: [{x: 0, y: 0}, {x: maxVal, y: maxVal}],
+          type: 'line',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false,
+        }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          title: { display: true, text: 'Predicted Duration (min)', color: '#94a3b8' },
+          ticks: { color: '#94a3b8' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          min: 0, max: maxVal
+        },
+        y: {
+          title: { display: true, text: 'Actual Duration (min)', color: '#94a3b8' },
+          ticks: { color: '#94a3b8' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          min: 0, max: maxVal
         },
       },
     },
@@ -579,6 +652,50 @@ async function loadAnalytics() {
     `).join('');
   } catch (e) {
     console.warn('EDA charts not available');
+  }
+}
+
+// ─── Learning Loop Tab ───────────────────────────────────────────────────────
+
+async function loadLearningLoop() {
+  try {
+    const log = await apiFetch('/feedback/log?limit=50');
+    
+    if (log.count === 0) return;
+
+    // Update Stats
+    document.getElementById('stat-mae').textContent = 
+      log.metrics.mae_duration_min !== null ? log.metrics.mae_duration_min.toFixed(1) : '—';
+    document.getElementById('stat-learning-accuracy').textContent = 
+      log.metrics.accuracy_severity_pct !== null ? log.metrics.accuracy_severity_pct.toFixed(1) + '%' : '—';
+    document.getElementById('stat-logged').textContent = log.metrics.total_feedback_events;
+
+    // Update Scatter Chart
+    const scatterData = log.entries.map(e => ({
+      x: e.predicted_duration_min || 0,
+      y: e.actual_duration_min || 0,
+    }));
+    renderScatterChart('chart-learning-scatter', { dataPoints: scatterData });
+
+    // Update Live Log Table
+    const tbody = document.getElementById('learning-log-body');
+    tbody.innerHTML = log.entries.map(e => {
+      const time = new Date(e.timestamp).toLocaleTimeString();
+      const sevColor = e.predicted_severity === e.actual_severity ? 'var(--text-primary)' : 'var(--accent-orange)';
+      const sevMatch = e.predicted_severity === e.actual_severity ? '✅' : '❌';
+      
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <td style="padding: 8px 10px; color: var(--text-dim);">${time}</td>
+          <td style="padding: 8px 10px; font-family: monospace;">${e.event_id}</td>
+          <td style="padding: 8px 10px; color: ${sevColor};">${e.predicted_severity} / ${e.actual_severity} ${sevMatch}</td>
+          <td style="padding: 8px 10px;">${e.predicted_duration_min} / ${e.actual_duration_min}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (e) {
+    console.warn('Learning loop fetch failed', e);
   }
 }
 

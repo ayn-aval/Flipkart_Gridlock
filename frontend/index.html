@@ -41,6 +41,7 @@
   <button class="nav-tab" data-tab="map" id="tab-map">🗺️ Event Map</button>
   <button class="nav-tab" data-tab="simulate" id="tab-simulate">🔮 Simulate Event</button>
   <button class="nav-tab" data-tab="analytics" id="tab-analytics">📈 Analytics</button>
+  <button class="nav-tab" data-tab="learning" id="tab-learning">🔄 Learning Loop</button>
 </nav>
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -285,6 +286,63 @@
       </div>
       <div id="eda-gallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px;">
         <!-- Populated dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Learning Loop Tab ─────────────────────────────────────── -->
+  <section class="tab-panel" id="panel-learning">
+    <div class="stats-grid">
+      <div class="stat-card" style="--accent-color: var(--accent-orange)">
+        <div class="stat-label">Duration MAE</div>
+        <div class="stat-value" id="stat-mae">—</div>
+        <div class="stat-detail">Mean Absolute Error (min)</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-green)">
+        <div class="stat-label">Severity Accuracy</div>
+        <div class="stat-value" id="stat-learning-accuracy">—</div>
+        <div class="stat-detail">% Correct Classifications</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-blue)">
+        <div class="stat-label">Total Logged</div>
+        <div class="stat-value" id="stat-logged">—</div>
+        <div class="stat-detail">Feedback entries</div>
+      </div>
+    </div>
+
+    <div class="charts-grid mt-12">
+      <!-- Scatter Plot: Predicted vs Actual Duration -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🎯 Duration: Predicted vs. Actual</h3>
+          <p class="text-sm text-dim">Ideal predictions fall on the diagonal line.</p>
+        </div>
+        <div class="chart-wrapper" style="height: 340px;">
+          <canvas id="chart-learning-scatter"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Log Table -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📡 Live Learning Log</h3>
+          <p class="text-sm text-dim">Streaming from /feedback/log (auto-updates)</p>
+        </div>
+        <div style="height: 340px; overflow-y: auto; padding: 0 20px 20px 20px;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim);">
+                <th style="padding: 10px;">Time</th>
+                <th style="padding: 10px;">Event ID</th>
+                <th style="padding: 10px;">Severity (P / A)</th>
+                <th style="padding: 10px;">Duration (P / A)</th>
+              </tr>
+            </thead>
+            <tbody id="learning-log-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>

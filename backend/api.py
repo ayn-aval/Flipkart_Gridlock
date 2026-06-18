@@ -457,16 +457,39 @@ def submit_feedback(request: FeedbackRequest):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/feedback/log", tags=["Learning Loop"])
-def get_feedback_log():
-    """Retrieve the full learning log for accuracy tracking."""
+def get_feedback_log(limit: int = Query(50, description="Max entries to return")):
+    """Retrieve the learning log and real-time accuracy metrics."""
     if not LEARNING_LOG.exists():
-        return {"count": 0, "entries": []}
+        return {"count": 0, "metrics": None, "entries": []}
 
     df = pd.read_csv(LEARNING_LOG)
-    df = df.where(df.notna(), None)
+    if len(df) == 0:
+        return {"count": 0, "metrics": None, "entries": []}
+
+    # Calculate metrics
+    # Duration MAE
+    df["duration_error"] = (df["actual_duration_min"] - df["predicted_duration_min"]).abs()
+    mae_duration = df["duration_error"].mean()
+
+    # Severity Accuracy
+    correct_severity = (df["actual_severity"] == df["predicted_severity"]).sum()
+    accuracy_severity = (correct_severity / len(df)) * 100
+
+    metrics = {
+        "mae_duration_min": round(mae_duration, 1) if pd.notna(mae_duration) else None,
+        "accuracy_severity_pct": round(accuracy_severity, 1),
+        "total_feedback_events": len(df)
+    }
+
+    # Sort descending by time and limit
+    df = df.sort_values("timestamp", ascending=False).head(limit)
+    
+    # We don't need to send the error column to frontend
+    df = df.drop(columns=["duration_error"], errors="ignore")
 
     return {
         "count": len(df),
+        "metrics": metrics,
         "entries": nan_safe_records(df),
     }
 
