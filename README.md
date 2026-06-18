@@ -38,7 +38,7 @@ See `data/processed/data_audit.md` for the full data audit report.
 | 1 | Cleaning & Feature Engineering | ✅ Complete |
 | 2 | Impact Forecasting Engine | ✅ Complete |
 | 3 | Resource Recommendation Engine | ✅ Complete |
-| 4 | Backend API | ⬜ Pending |
+| 4 | Backend API | ✅ Complete |
 | 5 | Dashboard Frontend | ⬜ Pending |
 | 6 | Real-Time Simulation + Learning Loop | ⬜ Pending |
 | 7 | Polish & Demo Readiness | ⬜ Pending |
@@ -128,6 +128,29 @@ Analog range: 2.9–144.1 min from 5 similar past events
 🔀 Diversions: CBD 2 (3.8 km, 89% fewer events at 09:00),
                ORR North 2 (4.1 km, 76% fewer events at 09:00)
 ```
+
+## Phase 4 — Backend API
+
+### Running the API
+```bash
+python3 -m uvicorn backend.api:app --port 8000
+# Swagger docs at http://localhost:8000/docs
+```
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/events` | Query historical events (filterable by corridor, cause, severity, date) |
+| GET | `/events/summary` | Aggregated stats for dashboard |
+| GET | `/hotspots` | Grouped event counts by corridor/zone/station |
+| GET | `/hotspots/geo` | Individual event points for map markers |
+| GET | `/corridors` | Corridor centroids + adjacency data |
+| GET | `/eda` | EDA chart listing + static file serving |
+| POST | `/forecast` | Severity + duration forecast with resource recommendations |
+| POST | `/feedback` | Log actual outcomes for learning loop |
+| GET | `/feedback/log` | Retrieve learning log entries |
 
 ## Tech Stack
 
