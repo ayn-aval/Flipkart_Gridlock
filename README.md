@@ -37,7 +37,7 @@ See `data/processed/data_audit.md` for the full data audit report.
 | 0 | Scaffolding & Data Audit | ✅ Complete |
 | 1 | Cleaning & Feature Engineering | ✅ Complete |
 | 2 | Impact Forecasting Engine | ✅ Complete |
-| 3 | Resource Recommendation Engine | ⬜ Pending |
+| 3 | Resource Recommendation Engine | ✅ Complete |
 | 4 | Backend API | ⬜ Pending |
 | 5 | Dashboard Frontend | ⬜ Pending |
 | 6 | Real-Time Simulation + Learning Loop | ⬜ Pending |
@@ -111,6 +111,22 @@ Severity: High (99.1% confidence)
 Duration: 13.2 min (model) / 34.1 min median (analog)
 Method: knn_analog_fallback
 Analog range: 2.9–144.1 min from 5 similar past events
+```
+
+## Phase 3 — Resource Recommendation Engine
+
+### Architecture
+- **35 rule entries** in a documented lookup table: `(event_cause, severity_tier, requires_road_closure)` → officer range, barricade range, action checklist
+- **Diversion engine** using corridor adjacency table — suggests 2–3 nearest alternate corridors with hour-aware rationale
+- **Explicit disclaimer** on every recommendation: this is heuristic-based, not learned from historical resource data
+
+### Sample Recommendation (procession on Bellary Road, Sunday, road closure)
+```
+👮 Officers: 8–15       🚧 Barriers: 10–20 units
+✅ Actions: Full route closure, officers at every junction, escort with patrol
+            vehicles, issue traffic advisory, phased reopening
+🔀 Diversions: CBD 2 (3.8 km, 89% fewer events at 09:00),
+               ORR North 2 (4.1 km, 76% fewer events at 09:00)
 ```
 
 ## Tech Stack
