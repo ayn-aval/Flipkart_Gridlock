@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
 
+import math
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, Query, HTTPException
@@ -57,6 +58,23 @@ forecast_engine = None
 rec_engine = None
 
 
+def nan_safe_records(df: pd.DataFrame) -> list:
+    """Convert DataFrame to list of dicts with NaN replaced by None.
+    
+    Handles both Python float and numpy float64 NaN values.
+    """
+    records = df.to_dict(orient="records")
+    for record in records:
+        for key, val in record.items():
+            if val is None:
+                continue
+            try:
+                if isinstance(val, (float, np.floating)) and (math.isnan(val) or math.isinf(val)):
+                    record[key] = None
+            except (TypeError, ValueError):
+                pass
+    return records
+
 @app.on_event("startup")
 def startup_load():
     """Load data and models at startup."""
@@ -64,8 +82,6 @@ def startup_load():
 
     # Load events
     events_df = pd.read_csv(CLEAN_CSV)
-    # Replace NaN with None for JSON serialization
-    events_df = events_df.where(events_df.notna(), None)
     print(f"[API] Loaded {len(events_df)} events")
 
     # Load forecasting engine
@@ -162,8 +178,8 @@ def get_events(
     total = len(df)
     df = df.iloc[offset:offset + limit]
 
-    # Convert to records
-    records = df.to_dict(orient="records")
+    # Convert to records, replacing NaN with None for JSON safety
+    records = nan_safe_records(df)
 
     return {
         "total": total,
@@ -245,7 +261,7 @@ def get_hotspots(
     return {
         "group_by": group_by,
         "total_groups": len(grouped),
-        "hotspots": grouped.to_dict(orient="records"),
+        "hotspots": nan_safe_records(grouped),
     }
 
 
@@ -281,9 +297,9 @@ def get_hotspots_geo(
             "event_cause": row["event_cause"],
             "severity_tier": row["severity_tier"],
             "corridor": row["corridor"],
-            "requires_road_closure": bool(row["requires_road_closure"]) if row["requires_road_closure"] is not None else False,
-            "hour_of_day": int(row["hour_of_day"]) if row["hour_of_day"] is not None else None,
-            "description": str(row["description"])[:150] if row["description"] else None,
+            "requires_road_closure": bool(row["requires_road_closure"]) if pd.notna(row["requires_road_closure"]) else False,
+            "hour_of_day": int(row["hour_of_day"]) if pd.notna(row["hour_of_day"]) else None,
+            "description": str(row["description"])[:150] if pd.notna(row["description"]) else None,
         })
 
     return {"count": len(points), "points": points}
@@ -302,7 +318,7 @@ def get_corridors():
     corridors = []
     for _, row in centroids.iterrows():
         name = row["corridor"]
-        neighbors = adjacency[adjacency["corridor"] == name].to_dict(orient="records")
+        neighbors = nan_safe_records(adjacency[adjacency["corridor"] == name])
         corridors.append({
             "name": name,
             "centroid_lat": row["centroid_lat"],
@@ -451,7 +467,7 @@ def get_feedback_log():
 
     return {
         "count": len(df),
-        "entries": df.to_dict(orient="records"),
+        "entries": nan_safe_records(df),
     }
 
 
@@ -476,9 +492,21 @@ def health_check():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 if EDA_DIR.exists():
     app.mount("/eda", StaticFiles(directory=str(EDA_DIR)), name="eda_charts")
+
+# Serve frontend
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
+@app.get("/", tags=["Frontend"])
+def serve_frontend():
+    """Serve the dashboard."""
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 
 
 # ─── Run directly ────────────────────────────────────────────────────────────

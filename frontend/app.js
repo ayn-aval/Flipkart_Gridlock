@@ -1,0 +1,596 @@
+/**
+ * Gridlock Dashboard — Frontend Logic
+ * ====================================
+ * Connects to the FastAPI backend and renders:
+ * - Overview stats + charts
+ * - Interactive Leaflet map with clustered markers
+ * - Event simulation panel (forecast + recommendations)
+ * - Analytics with EDA gallery
+ */
+
+const API_BASE = 'http://localhost:8000';
+
+// ─── Tab Navigation ──────────────────────────────────────────────────────────
+
+let mapInitialized = false;
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    // Update active tab
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    // Show corresponding panel
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const panelId = `panel-${tab.dataset.tab}`;
+    document.getElementById(panelId).classList.add('active');
+
+    // Lazy-init map when first shown
+    if (tab.dataset.tab === 'map' && !mapInitialized) {
+      initMap();
+      mapInitialized = true;
+    }
+  });
+});
+
+
+// ─── API Helpers ─────────────────────────────────────────────────────────────
+
+async function apiFetch(path, options = {}) {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, options);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return await res.json();
+  } catch (e) {
+    console.error(`API error: ${path}`, e);
+    throw e;
+  }
+}
+
+
+// ─── Startup ─────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    // Health check
+    const health = await apiFetch('/health');
+    document.getElementById('api-status').textContent =
+      `${health.events_loaded.toLocaleString()} events loaded`;
+
+    // Load all data
+    await Promise.all([
+      loadOverview(),
+      loadCorridorDropdowns(),
+      loadAnalytics(),
+    ]);
+  } catch (e) {
+    document.getElementById('api-status').textContent = 'API Offline';
+    document.querySelector('.status-dot').style.background = '#ef4444';
+    console.error('Init failed:', e);
+  }
+}
+
+
+// ─── Overview Tab ────────────────────────────────────────────────────────────
+
+async function loadOverview() {
+  const summary = await apiFetch('/events/summary');
+
+  // Stats cards
+  document.getElementById('stat-total').textContent = summary.total_events.toLocaleString();
+  document.getElementById('stat-event-driven').textContent = summary.event_driven_count.toLocaleString();
+  document.getElementById('stat-high').textContent = (summary.by_severity.High || 0).toLocaleString();
+  document.getElementById('stat-closures').textContent = summary.road_closure_count.toLocaleString();
+  document.getElementById('stat-corridors').textContent = summary.corridors.length;
+  document.getElementById('stat-accuracy').textContent = '71.9%';
+
+  if (summary.date_range.min && summary.date_range.max) {
+    document.getElementById('stat-date-range').textContent =
+      `${summary.date_range.min} → ${summary.date_range.max}`;
+  }
+
+  // Chart: Events by Cause
+  renderBarChart('chart-causes', {
+    labels: Object.keys(summary.by_event_cause),
+    values: Object.values(summary.by_event_cause),
+    color: 'rgba(59, 130, 246, 0.8)',
+    label: 'Events',
+  });
+
+  // Chart: Severity Distribution
+  renderDoughnutChart('chart-severity', {
+    labels: ['Low', 'Medium', 'High'],
+    values: [summary.by_severity.Low || 0, summary.by_severity.Medium || 0, summary.by_severity.High || 0],
+    colors: ['#34d399', '#fbbf24', '#ef4444'],
+  });
+
+  // Load hourly distribution
+  const events = await apiFetch('/events?limit=5000');
+  const hourCounts = new Array(24).fill(0);
+  events.events.forEach(e => {
+    if (e.hour_of_day != null) hourCounts[Math.round(e.hour_of_day)]++;
+  });
+
+  renderBarChart('chart-hours', {
+    labels: hourCounts.map((_, i) => `${String(i).padStart(2, '0')}:00`),
+    values: hourCounts,
+    color: 'rgba(34, 211, 238, 0.7)',
+    label: 'Events',
+  });
+
+  // Chart: Top corridors
+  const hotspots = await apiFetch('/hotspots?group_by=corridor');
+  const top10 = hotspots.hotspots.slice(0, 10);
+  renderHorizontalBarChart('chart-corridors', {
+    labels: top10.map(h => h.corridor),
+    values: top10.map(h => h.event_count),
+    color: 'rgba(167, 139, 250, 0.7)',
+    label: 'Events',
+  });
+}
+
+
+// ─── Chart Renderers ─────────────────────────────────────────────────────────
+
+const chartInstances = {};
+
+function renderBarChart(canvasId, { labels, values, color, label }) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data: values,
+        backgroundColor: color,
+        borderColor: color.replace('0.8', '1').replace('0.7', '1'),
+        borderWidth: 1,
+        borderRadius: 4,
+        maxBarThickness: 40,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
+      },
+    },
+  });
+}
+
+function renderHorizontalBarChart(canvasId, { labels, values, color, label }) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data: values,
+        backgroundColor: color,
+        borderRadius: 4,
+        maxBarThickness: 24,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+}
+
+function renderDoughnutChart(canvasId, { labels, values, colors }) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 0,
+        hoverOffset: 8,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94a3b8', padding: 16, font: { size: 12 } },
+        },
+      },
+    },
+  });
+}
+
+
+// ─── Map Tab ─────────────────────────────────────────────────────────────────
+
+let map, markerCluster;
+
+function initMap() {
+  // Bengaluru center
+  map = L.map('map', {
+    center: [12.97, 77.59],
+    zoom: 12,
+    zoomControl: true,
+  });
+
+  // Dark tile layer (CartoDB Dark Matter)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(map);
+
+  markerCluster = L.markerClusterGroup({
+    maxClusterRadius: 40,
+    spiderfyOnMaxZoom: true,
+    iconCreateFunction: function (cluster) {
+      const count = cluster.getChildCount();
+      let size = 'small';
+      let className = 'marker-cluster-small';
+      if (count > 50) { size = 'large'; className = 'marker-cluster-large'; }
+      else if (count > 20) { size = 'medium'; className = 'marker-cluster-medium'; }
+
+      return L.divIcon({
+        html: `<div><span>${count}</span></div>`,
+        className: `marker-cluster ${className}`,
+        iconSize: L.point(40, 40),
+      });
+    },
+  });
+
+  map.addLayer(markerCluster);
+  refreshMap();
+}
+
+const SEVERITY_COLORS = {
+  High: '#ef4444',
+  Medium: '#fbbf24',
+  Low: '#34d399',
+};
+
+function createCircleMarker(point) {
+  const color = SEVERITY_COLORS[point.severity_tier] || '#60a5fa';
+  const marker = L.circleMarker([point.lat, point.lon], {
+    radius: 6,
+    fillColor: color,
+    fillOpacity: 0.8,
+    color: color,
+    weight: 1,
+    opacity: 0.9,
+  });
+
+  const popupHtml = `
+    <div class="popup-title">${point.event_cause.replace(/_/g, ' ')}</div>
+    <div class="popup-detail">
+      <strong>Corridor:</strong> ${point.corridor}<br/>
+      <strong>Severity:</strong> <span style="color:${color}">${point.severity_tier}</span><br/>
+      ${point.hour_of_day != null ? `<strong>Hour:</strong> ${String(point.hour_of_day).padStart(2, '0')}:00 IST<br/>` : ''}
+      ${point.requires_road_closure ? '<strong>🚧 Road Closure Required</strong><br/>' : ''}
+      ${point.description ? `<em>"${point.description}"</em>` : ''}
+    </div>
+  `;
+  marker.bindPopup(popupHtml);
+  return marker;
+}
+
+async function refreshMap() {
+  if (!map) return;
+  const btn = document.getElementById('map-refresh-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Loading...';
+
+  try {
+    const cause = document.getElementById('map-filter-cause').value;
+    const severity = document.getElementById('map-filter-severity').value;
+    const corridor = document.getElementById('map-filter-corridor').value;
+
+    let url = '/hotspots/geo?limit=5000';
+    if (cause) url += `&event_cause=${encodeURIComponent(cause)}`;
+    if (severity) url += `&severity=${encodeURIComponent(severity)}`;
+    if (corridor) url += `&corridor=${encodeURIComponent(corridor)}`;
+
+    const data = await apiFetch(url);
+
+    markerCluster.clearLayers();
+    data.points.forEach(p => {
+      markerCluster.addLayer(createCircleMarker(p));
+    });
+
+    btn.textContent = `🔄 ${data.count} events`;
+  } catch (e) {
+    btn.textContent = '❌ Error';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+
+// ─── Populate Dropdowns ──────────────────────────────────────────────────────
+
+async function loadCorridorDropdowns() {
+  const summary = await apiFetch('/events/summary');
+
+  // Corridor dropdowns
+  const corridors = summary.corridors;
+  ['sim-corridor', 'map-filter-corridor'].forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const firstOption = id === 'sim-corridor' ? '<option value="Non-corridor">Non-corridor</option>' : '<option value="">All Corridors</option>';
+    select.innerHTML = firstOption + corridors.map(c =>
+      `<option value="${c}">${c}</option>`
+    ).join('');
+  });
+
+  // Event cause dropdown for map
+  const causeSelect = document.getElementById('map-filter-cause');
+  const causes = summary.event_causes;
+  causeSelect.innerHTML = '<option value="">All Causes</option>' +
+    causes.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
+}
+
+
+// ─── Simulation ──────────────────────────────────────────────────────────────
+
+async function runSimulation(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById('sim-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Forecasting...';
+
+  try {
+    const payload = {
+      event_cause: document.getElementById('sim-cause').value,
+      corridor: document.getElementById('sim-corridor').value,
+      hour_of_day: parseInt(document.getElementById('sim-hour').value),
+      day_of_week: parseInt(document.getElementById('sim-day').value),
+      is_weekend: parseInt(document.getElementById('sim-weekend').value),
+      requires_road_closure: parseInt(document.getElementById('sim-closure').value),
+      veh_type: document.getElementById('sim-veh').value,
+    };
+
+    const result = await apiFetch('/forecast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    renderForecastResults(result);
+  } catch (err) {
+    document.getElementById('forecast-results').innerHTML = `
+      <div class="card" style="border-color: var(--severity-high);">
+        <h3 class="text-rose">❌ Forecast Error</h3>
+        <p class="text-muted">${err.message}</p>
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Run Forecast';
+  }
+}
+
+function renderForecastResults(result) {
+  const f = result.forecast;
+  const r = result.recommendation;
+  const container = document.getElementById('forecast-results');
+
+  const severityClass = f.severity_tier.toLowerCase();
+  const confidencePct = Math.round(f.severity_confidence * 100);
+  const confColor = f.severity_tier === 'High' ? '#ef4444' : f.severity_tier === 'Medium' ? '#fbbf24' : '#34d399';
+
+  let durationDisplay = `${f.expected_duration_min} min`;
+  if (f.analog_duration_median_min) {
+    durationDisplay += ` <span class="text-muted">(analog median: ${f.analog_duration_median_min} min)</span>`;
+  }
+
+  // Build actions HTML
+  const actionsHtml = r.action_checklist.map((a, i) =>
+    `<li><span class="action-num">${i + 1}</span>${a}</li>`
+  ).join('');
+
+  // Build diversions HTML
+  const diversionsHtml = r.diversion_suggestions.map(d => `
+    <div class="diversion-card">
+      <span class="diversion-icon">🔀</span>
+      <div>
+        <div class="diversion-name">${d.corridor}</div>
+        <div class="diversion-detail">${d.rationale}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Build similar events HTML
+  const similarHtml = f.similar_past_events.slice(0, 5).map(e => `
+    <div class="similar-event">
+      <div>
+        <span class="cause-tag">${e.event_cause.replace(/_/g, ' ')}</span>
+        <span class="text-muted" style="margin-left:6px">${e.corridor}</span>
+      </div>
+      <span class="duration">${e.duration_min}m</span>
+      <span class="similarity">${Math.round(e.similarity_score * 100)}%</span>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <!-- Severity & Duration -->
+    <div class="result-section">
+      <div class="result-section-title">📊 Forecast Result</div>
+      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <span class="severity-badge ${severityClass}">
+          ${f.severity_tier === 'High' ? '🔴' : f.severity_tier === 'Medium' ? '🟡' : '🟢'}
+          ${f.severity_tier} Severity
+        </span>
+        <span class="text-muted" style="font-size: 0.8rem;">
+          Method: <strong>${f.method === 'knn_analog_fallback' ? 'k-NN Analog Fallback' : 'GBT Model'}</strong>
+        </span>
+      </div>
+      <div class="confidence-bar" style="margin-top: 12px;">
+        <div class="confidence-fill" style="width: ${confidencePct}%; background: ${confColor};"></div>
+      </div>
+      <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Confidence: ${confidencePct}%</div>
+      <div class="metric-grid" style="margin-top: 16px;">
+        <div class="metric-item">
+          <span class="metric-label">Expected Duration</span>
+          <span class="metric-value text-amber">${durationDisplay}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Severity Probabilities</span>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">
+            Low: ${Math.round(f.severity_probabilities.Low * 100)}% · 
+            Med: ${Math.round(f.severity_probabilities.Medium * 100)}% · 
+            High: ${Math.round(f.severity_probabilities.High * 100)}%
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resource Recommendation -->
+    <div class="result-section">
+      <div class="result-section-title">👮 Resource Recommendation</div>
+      <div class="metric-grid">
+        <div class="metric-item">
+          <span class="metric-label">Officers Required</span>
+          <span class="metric-value text-blue">${r.manpower.officers_min}–${r.manpower.officers_max}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Barricade Units</span>
+          <span class="metric-value text-cyan">${r.barricading.barricades_min}–${r.barricading.barricades_max}</span>
+        </div>
+      </div>
+      <div class="text-muted" style="font-size: 0.8rem; margin-top: 8px;">
+        <strong>Basis:</strong> ${r.basis}
+      </div>
+    </div>
+
+    <!-- Action Checklist -->
+    <div class="result-section">
+      <div class="result-section-title">✅ Action Checklist</div>
+      <ul class="action-list">${actionsHtml}</ul>
+    </div>
+
+    <!-- Diversion Suggestions -->
+    <div class="result-section">
+      <div class="result-section-title">🔀 Diversion Suggestions</div>
+      <div class="diversion-list">${diversionsHtml}</div>
+    </div>
+
+    <!-- Similar Past Events -->
+    <div class="result-section">
+      <div class="result-section-title">📋 Similar Historical Events</div>
+      ${similarHtml}
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">${r.disclaimer}</div>
+  `;
+}
+
+
+// ─── Analytics Tab ───────────────────────────────────────────────────────────
+
+async function loadAnalytics() {
+  // Hotspot corridors chart
+  const hotspots = await apiFetch('/hotspots?group_by=corridor');
+  const top10 = hotspots.hotspots.filter(h => h.corridor !== 'Non-corridor').slice(0, 10);
+
+  renderHorizontalBarChart('chart-hotspots', {
+    labels: top10.map(h => h.corridor),
+    values: top10.map(h => h.event_count),
+    color: 'rgba(251, 146, 60, 0.7)',
+    label: 'Events',
+  });
+
+  // Road closure rate by cause
+  const events = await apiFetch('/events?limit=5000');
+  const causeCounts = {};
+  const causeClosures = {};
+  events.events.forEach(e => {
+    causeCounts[e.event_cause] = (causeCounts[e.event_cause] || 0) + 1;
+    if (e.requires_road_closure) {
+      causeClosures[e.event_cause] = (causeClosures[e.event_cause] || 0) + 1;
+    }
+  });
+
+  const causes = Object.keys(causeCounts).sort((a, b) => {
+    const rateA = (causeClosures[a] || 0) / causeCounts[a];
+    const rateB = (causeClosures[b] || 0) / causeCounts[b];
+    return rateB - rateA;
+  });
+
+  renderHorizontalBarChart('chart-closure-rate', {
+    labels: causes.map(c => c.replace(/_/g, ' ')),
+    values: causes.map(c => Math.round(((causeClosures[c] || 0) / causeCounts[c]) * 100)),
+    color: 'rgba(251, 113, 133, 0.7)',
+    label: 'Closure Rate %',
+  });
+
+  // EDA Gallery
+  try {
+    const eda = await apiFetch('/eda');
+    const gallery = document.getElementById('eda-gallery');
+    gallery.innerHTML = eda.charts.map(chart => `
+      <div style="background: var(--bg-glass); border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle);">
+        <img src="${API_BASE}${chart.url}" alt="${chart.title}" 
+             style="width: 100%; display: block; border-radius: var(--radius-sm);" 
+             loading="lazy" />
+        <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-secondary);">
+          ${chart.title}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.warn('EDA charts not available');
+  }
+}
+
+
+// ─── Auto-sync weekend field with day selection ──────────────────────────────
+
+document.getElementById('sim-day').addEventListener('change', function () {
+  const day = parseInt(this.value);
+  document.getElementById('sim-weekend').value = (day >= 5) ? '1' : '0';
+});
+
+
+// ─── Initialize ──────────────────────────────────────────────────────────────
+
+init();

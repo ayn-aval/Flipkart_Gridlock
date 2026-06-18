@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gridlock — Event-Driven Congestion Forecasting</title>
+  <meta name="description" content="Forecast event-related traffic impact and recommend optimal resource deployment for Bengaluru traffic corridors." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <!-- Dashboard CSS -->
+  <link rel="stylesheet" href="/static/index.css" />
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     HEADER
+     ════════════════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <span class="logo-icon">🚦</span>
+    <div>
+      <h1>Gridlock</h1>
+      <span class="tagline">Event-Driven Congestion Forecasting & Resource Recommendation</span>
+    </div>
+  </div>
+  <div class="header-status">
+    <span class="status-dot"></span>
+    <span id="api-status">Connecting...</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     NAVIGATION TABS
+     ════════════════════════════════════════════════════════════════════ -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" data-tab="overview" id="tab-overview">📊 Overview</button>
+  <button class="nav-tab" data-tab="map" id="tab-map">🗺️ Event Map</button>
+  <button class="nav-tab" data-tab="simulate" id="tab-simulate">🔮 Simulate Event</button>
+  <button class="nav-tab" data-tab="analytics" id="tab-analytics">📈 Analytics</button>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+     ════════════════════════════════════════════════════════════════════ -->
+<main class="main-content">
+
+  <!-- ─── Overview Tab ──────────────────────────────────────────── -->
+  <section class="tab-panel active" id="panel-overview">
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card" style="--accent-color: var(--accent-blue)">
+        <div class="stat-label">Total Events</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-detail" id="stat-date-range"></div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-emerald)">
+        <div class="stat-label">Event-Driven</div>
+        <div class="stat-value" id="stat-event-driven">—</div>
+        <div class="stat-detail">Theme-relevant events</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--severity-high)">
+        <div class="stat-label">High Severity</div>
+        <div class="stat-value" id="stat-high">—</div>
+        <div class="stat-detail">Required major response</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-amber)">
+        <div class="stat-label">Road Closures</div>
+        <div class="stat-value" id="stat-closures">—</div>
+        <div class="stat-detail">Events requiring closure</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-violet)">
+        <div class="stat-label">Corridors</div>
+        <div class="stat-value" id="stat-corridors">—</div>
+        <div class="stat-detail">Monitored corridors</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent-cyan)">
+        <div class="stat-label">Model Accuracy</div>
+        <div class="stat-value" id="stat-accuracy">—</div>
+        <div class="stat-detail">Severity classifier</div>
+      </div>
+    </div>
+
+    <!-- Quick Charts -->
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🔥 Events by Cause</h3>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-causes"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">⏰ Events by Hour (IST)</h3>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-hours"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🚨 Severity Distribution</h3>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-severity"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🛣️ Top Corridors</h3>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-corridors"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Map Tab ───────────────────────────────────────────────── -->
+  <section class="tab-panel" id="panel-map">
+    <div class="map-filters">
+      <div class="filter-group">
+        <label>Cause</label>
+        <select id="map-filter-cause">
+          <option value="">All Causes</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Severity</label>
+        <select id="map-filter-severity">
+          <option value="">All</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Corridor</label>
+        <select id="map-filter-corridor">
+          <option value="">All Corridors</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="map-refresh-btn" onclick="refreshMap()">🔄 Refresh Map</button>
+    </div>
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+  </section>
+
+  <!-- ─── Simulate Tab ──────────────────────────────────────────── -->
+  <section class="tab-panel" id="panel-simulate">
+    <div class="sim-layout">
+
+      <!-- Input Form -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🔮 Event Simulation</h3>
+        </div>
+        <form class="sim-form" id="sim-form" onsubmit="runSimulation(event)">
+          <div class="form-group">
+            <label>Event Cause</label>
+            <select id="sim-cause" required>
+              <option value="">Select event type...</option>
+              <option value="procession">Procession</option>
+              <option value="public_event">Public Event / Rally</option>
+              <option value="vip_movement">VIP Movement</option>
+              <option value="protest">Protest</option>
+              <option value="construction">Construction</option>
+              <option value="accident">Accident</option>
+              <option value="vehicle_breakdown">Vehicle Breakdown</option>
+              <option value="water_logging">Water Logging</option>
+              <option value="tree_fall">Tree Fall</option>
+              <option value="congestion">Congestion</option>
+              <option value="pot_holes">Potholes</option>
+              <option value="road_conditions">Road Conditions</option>
+              <option value="debris">Debris</option>
+              <option value="others">Others</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Corridor</label>
+            <select id="sim-corridor">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hour of Day (IST)</label>
+              <input type="number" id="sim-hour" min="0" max="23" value="9" />
+            </div>
+            <div class="form-group">
+              <label>Day of Week</label>
+              <select id="sim-day">
+                <option value="0">Monday</option>
+                <option value="1">Tuesday</option>
+                <option value="2">Wednesday</option>
+                <option value="3">Thursday</option>
+                <option value="4">Friday</option>
+                <option value="5">Saturday</option>
+                <option value="6">Sunday</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Weekend?</label>
+              <select id="sim-weekend">
+                <option value="0">No (Weekday)</option>
+                <option value="1">Yes (Weekend)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Road Closure Needed?</label>
+              <select id="sim-closure">
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Vehicle Type (if applicable)</label>
+            <select id="sim-veh">
+              <option value="none">None / Not Applicable</option>
+              <option value="heavy_vehicle">Heavy Vehicle</option>
+              <option value="bmtc_bus">BMTC Bus</option>
+              <option value="truck">Truck</option>
+              <option value="car">Car</option>
+              <option value="two_wheeler">Two Wheeler</option>
+              <option value="auto_rickshaw">Auto Rickshaw</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="sim-submit-btn">
+            ⚡ Run Forecast
+          </button>
+        </form>
+      </div>
+
+      <!-- Results Panel -->
+      <div class="forecast-results" id="forecast-results">
+        <div class="empty-state" id="sim-empty">
+          <div class="icon">🔮</div>
+          <h3>Configure & Simulate</h3>
+          <p class="text-muted">Select event parameters and click "Run Forecast" to see predicted impact, resource recommendations, and diversion suggestions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Analytics Tab ─────────────────────────────────────────── -->
+  <section class="tab-panel" id="panel-analytics">
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📊 Top 10 Hotspot Corridors</h3>
+        </div>
+        <div class="chart-wrapper" style="height: 340px;">
+          <canvas id="chart-hotspots"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🚧 Road Closure Rate by Cause</h3>
+        </div>
+        <div class="chart-wrapper" style="height: 340px;">
+          <canvas id="chart-closure-rate"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDA Gallery -->
+    <div class="card mt-12">
+      <div class="card-header">
+        <h3 class="card-title">📷 EDA Visualizations</h3>
+      </div>
+      <div id="eda-gallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     ════════════════════════════════════════════════════════════════════ -->
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Dashboard JS -->
+<script src="/static/app.js"></script>
+
+</body>
+</html>
