@@ -114,16 +114,17 @@ class ForecastRequest(BaseModel):
     """Input for the /forecast endpoint."""
     event_cause: str = Field(..., description="Type of event cause", 
                              examples=["procession", "vehicle_breakdown", "construction"])
-    corridor: str = Field("Non-corridor", description="Traffic corridor name",
-                         examples=["Bellary Road 1", "Mysore Road"])
+    event_type: str = Field("unplanned", description="Event type (planned/unplanned)")
+    corridor: str = Field("Non-corridor", description="Traffic corridor name")
+    zone: str = Field("Unknown", description="City zone")
+    police_station: str = Field("Unknown", description="Police station jurisdiction")
+    direction: str = Field("unknown", description="Traffic direction")
     hour_of_day: int = Field(12, ge=0, le=23, description="Hour in IST (0-23)")
     day_of_week: int = Field(2, ge=0, le=6, description="0=Monday, 6=Sunday")
     is_weekend: int = Field(0, ge=0, le=1, description="1 if Saturday/Sunday")
     requires_road_closure: int = Field(0, ge=0, le=1, description="1 if road closure needed")
-    veh_type: str = Field("none", description="Vehicle type (for breakdowns)",
-                          examples=["none", "heavy_vehicle", "bmtc_bus"])
-    time_period: Optional[str] = Field(None, description="Auto-computed if not provided",
-                                       examples=["morning_rush", "midday", "evening_rush", "night"])
+    veh_type: str = Field("none", description="Vehicle type (for breakdowns)")
+    description: str = Field("", description="Raw event description for NLP analysis")
 
 
 class FeedbackRequest(BaseModel):
@@ -201,18 +202,21 @@ def get_events_summary():
 
     return {
         "total_events": len(df),
-        "by_event_type": df["event_type"].value_counts().to_dict(),
+        "by_severity": df["severity_tier"].value_counts().to_dict() if "severity_tier" in df.columns else {},
         "by_event_cause": df["event_cause"].value_counts().to_dict(),
-        "by_severity": df["severity_tier"].value_counts().to_dict(),
-        "by_status": df["status"].value_counts().to_dict(),
-        "by_priority": df["priority"].value_counts().to_dict(),
-        "event_driven_count": int(df["is_event_driven"].sum()),
+        "event_driven_count": len(df),
+        "model_accuracy_pct": forecast_engine.severity_metrics["accuracy"] * 100 if forecast_engine else 71.9,
         "road_closure_count": int(df["requires_road_closure"].sum()),
         "corridors": sorted(df["corridor"].dropna().unique().tolist()),
+        "zones": sorted(df["zone"].dropna().unique().tolist()),
+        "police_stations": sorted(df["police_station"].dropna().unique().tolist()),
+        "directions": sorted(df["direction"].dropna().unique().tolist()),
         "event_causes": sorted(df["event_cause"].unique().tolist()),
+        "event_types": sorted(df["event_type"].unique().tolist()),
+        "veh_types": sorted(df["veh_type"].unique().tolist()),
         "date_range": {
-            "min": str(df["date"].dropna().min()) if df["date"].notna().any() else None,
-            "max": str(df["date"].dropna().max()) if df["date"].notna().any() else None,
+            "min": str(df["start_datetime"].dropna().min()) if df["start_datetime"].notna().any() else None,
+            "max": str(df["start_datetime"].dropna().max()) if df["start_datetime"].notna().any() else None,
         },
     }
 
@@ -360,38 +364,20 @@ def forecast_event(request: ForecastRequest):
     This combines Phase 2 (forecasting) and Phase 3 (recommendations) into
     a single response for the dashboard's simulation feature.
     """
-    # Auto-compute time_period if not provided
-    time_period = request.time_period
-    if not time_period:
-        h = request.hour_of_day
-        if 6 <= h < 10:
-            time_period = "morning_rush"
-        elif 10 <= h < 16:
-            time_period = "midday"
-        elif 16 <= h < 21:
-            time_period = "evening_rush"
-        else:
-            time_period = "night"
-
-    # Validate event_cause
-    valid_causes = events_df["event_cause"].unique().tolist()
-    if request.event_cause not in valid_causes:
-        raise HTTPException(
-            400,
-            f"Invalid event_cause '{request.event_cause}'. "
-            f"Valid values: {sorted(valid_causes)}"
-        )
-
     # Build event input dict
     event_input = {
         "event_cause": request.event_cause,
+        "event_type": request.event_type,
         "corridor": request.corridor,
-        "time_period": time_period,
+        "zone": request.zone,
+        "police_station": request.police_station,
+        "direction": request.direction,
         "hour_of_day": request.hour_of_day,
         "day_of_week": request.day_of_week,
         "is_weekend": request.is_weekend,
         "requires_road_closure": request.requires_road_closure,
         "veh_type": request.veh_type,
+        "description": request.description,
     }
 
     # Get forecast
@@ -429,8 +415,15 @@ def submit_feedback(request: FeedbackRequest):
 
     # Append to learning log
     timestamp = datetime.now().isoformat()
+    file_exists = LEARNING_LOG.exists()
+    
     with open(LEARNING_LOG, "a", newline="") as f:
         writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow([
+                "timestamp", "event_id", "predicted_severity", "predicted_duration_min",
+                "actual_severity", "actual_duration_min", "feedback_notes"
+            ])
         writer.writerow([
             timestamp,
             request.event_id,

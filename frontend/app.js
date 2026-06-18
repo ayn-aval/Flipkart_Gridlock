@@ -106,7 +106,9 @@ async function loadOverview() {
   document.getElementById('stat-high').textContent = (summary.by_severity.High || 0).toLocaleString();
   document.getElementById('stat-closures').textContent = summary.road_closure_count.toLocaleString();
   document.getElementById('stat-corridors').textContent = summary.corridors.length;
-  document.getElementById('stat-accuracy').textContent = '71.9%';
+  
+  const acc = summary.model_accuracy_pct || 71.9;
+  document.getElementById('stat-accuracy').textContent = acc.toFixed(1) + '%';
 
   if (summary.date_range.min && summary.date_range.max) {
     document.getElementById('stat-date-range').textContent =
@@ -123,9 +125,9 @@ async function loadOverview() {
 
   // Chart: Severity Distribution
   renderDoughnutChart('chart-severity', {
-    labels: ['Low', 'Medium', 'High'],
-    values: [summary.by_severity.Low || 0, summary.by_severity.Medium || 0, summary.by_severity.High || 0],
-    colors: ['#34d399', '#fbbf24', '#ef4444'],
+    labels: ['Low', 'High'],
+    values: [summary.by_severity.Low || 0, summary.by_severity.High || 0],
+    colors: ['#34d399', '#ef4444'],
   });
 
   // Load hourly distribution
@@ -363,7 +365,6 @@ function initMap() {
 
 const SEVERITY_COLORS = {
   High: '#ef4444',
-  Medium: '#fbbf24',
   Low: '#34d399',
 };
 
@@ -443,11 +444,29 @@ async function loadCorridorDropdowns() {
     ).join('');
   });
 
-  // Event cause dropdown for map
-  const causeSelect = document.getElementById('map-filter-cause');
+  // Event cause dropdown for map and sim
+  const causeSelectMap = document.getElementById('map-filter-cause');
+  const causeSelectSim = document.getElementById('sim-cause');
   const causes = summary.event_causes;
-  causeSelect.innerHTML = '<option value="">All Causes</option>' +
-    causes.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
+  
+  const causeOptions = causes.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
+  if (causeSelectMap) causeSelectMap.innerHTML = '<option value="">All Causes</option>' + causeOptions;
+  if (causeSelectSim) causeSelectSim.innerHTML = '<option value="">Select cause...</option>' + causeOptions;
+
+  // New Dropdowns
+  const populate = (id, list, defaultText) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<option value="">${defaultText}</option>` + list.map(i => `<option value="${i}">${i}</option>`).join('');
+  };
+
+  populate('sim-type', summary.event_types, 'Select type...');
+  populate('sim-zone', summary.zones, 'Select zone...');
+  populate('sim-station', summary.police_stations, 'Select station...');
+  populate('sim-direction', summary.directions, 'Select direction...');
+  
+  const vehOptions = summary.veh_types.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
+  const vehEl = document.getElementById('sim-veh');
+  if (vehEl) vehEl.innerHTML = '<option value="none">None / Not Applicable</option>' + vehOptions;
 }
 
 
@@ -464,12 +483,17 @@ async function runSimulation(e) {
   try {
     const payload = {
       event_cause: document.getElementById('sim-cause').value,
+      event_type: document.getElementById('sim-type').value,
       corridor: document.getElementById('sim-corridor').value,
+      zone: document.getElementById('sim-zone').value,
+      police_station: document.getElementById('sim-station').value,
+      direction: document.getElementById('sim-direction').value,
       hour_of_day: parseInt(document.getElementById('sim-hour').value),
       day_of_week: parseInt(document.getElementById('sim-day').value),
       is_weekend: parseInt(document.getElementById('sim-weekend').value),
       requires_road_closure: parseInt(document.getElementById('sim-closure').value),
       veh_type: document.getElementById('sim-veh').value,
+      description: document.getElementById('sim-desc').value,
     };
 
     const result = await apiFetch('/forecast', {
@@ -501,7 +525,7 @@ function renderForecastResults(result) {
 
   const severityClass = f.severity_tier.toLowerCase();
   const confidencePct = Math.round(f.severity_confidence * 100);
-  const confColor = f.severity_tier === 'High' ? '#ef4444' : f.severity_tier === 'Medium' ? '#fbbf24' : '#34d399';
+  const confColor = f.severity_tier === 'High' ? '#ef4444' : '#34d399';
 
   let durationDisplay = `${f.expected_duration_min} min`;
   if (f.analog_duration_median_min) {
@@ -559,11 +583,10 @@ function renderForecastResults(result) {
         </div>
         <div class="metric-item">
           <span class="metric-label">Severity Probabilities</span>
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">
+          <div class="sim-prob-bar" style="font-size: 0.8rem; color: var(--text-secondary);">
             Low: ${Math.round(f.severity_probabilities.Low * 100)}% · 
-            Med: ${Math.round(f.severity_probabilities.Medium * 100)}% · 
             High: ${Math.round(f.severity_probabilities.High * 100)}%
-          </span>
+          </div>
         </div>
       </div>
     </div>

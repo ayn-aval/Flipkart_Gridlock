@@ -52,12 +52,17 @@ def run_simulation(df):
             
             forecast_payload = {
                 "event_cause": event["event_cause"],
+                "event_type": event["event_type"],
                 "corridor": corridor,
+                "zone": event["zone"] if pd.notna(event["zone"]) else "Unknown",
+                "police_station": event["police_station"] if pd.notna(event["police_station"]) else "Unknown",
+                "direction": event["direction"] if pd.notna(event["direction"]) else "unknown",
                 "hour_of_day": int(event["hour_of_day"]),
                 "day_of_week": int(event["day_of_week"]),
-                "is_weekend": bool(event["is_weekend"]),
-                "requires_road_closure": bool(event["requires_road_closure"]),
-                "veh_type": "None"
+                "is_weekend": int(event["is_weekend"]),
+                "requires_road_closure": int(event["requires_road_closure"]),
+                "veh_type": event["veh_type"] if pd.notna(event["veh_type"]) else "none",
+                "description": str(event["description"]) if pd.notna(event["description"]) else ""
             }
 
             print(f"📡 Dispatching Event: {event_id} ({event['event_cause']} on {corridor})")
@@ -91,9 +96,10 @@ def run_simulation(df):
             # Usually severity is same as true, sometimes simulate a surprise
             actual_severity = true_severity
             if random.random() < 0.05:  # 5% chance of anomalous severity
-                tiers = ["Low", "Medium", "High"]
-                tiers.remove(true_severity)
-                actual_severity = random.choice(tiers)
+                tiers = ["Low", "High"]
+                if true_severity in tiers:
+                    tiers.remove(true_severity)
+                actual_severity = random.choice(tiers) if tiers else true_severity
 
             print(f"  🕒 Actuals Logged: {actual_severity} severity | {actual_duration:.1f} min")
 

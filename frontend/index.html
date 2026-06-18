@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <!-- Dashboard CSS -->
-  <link rel="stylesheet" href="/static/index.css" />
+  <link rel="stylesheet" href="/static/index.css?v=2" />
 </head>
 <body>
 
@@ -135,9 +135,8 @@
       <div class="filter-group">
         <label>Severity</label>
         <select id="map-filter-severity">
-          <option value="">All</option>
+          <option value="all">All Severities</option>
           <option value="High">High</option>
-          <option value="Medium">Medium</option>
           <option value="Low">Low</option>
         </select>
       </div>
@@ -167,21 +166,14 @@
           <div class="form-group">
             <label>Event Cause</label>
             <select id="sim-cause" required>
-              <option value="">Select event type...</option>
-              <option value="procession">Procession</option>
-              <option value="public_event">Public Event / Rally</option>
-              <option value="vip_movement">VIP Movement</option>
-              <option value="protest">Protest</option>
-              <option value="construction">Construction</option>
-              <option value="accident">Accident</option>
-              <option value="vehicle_breakdown">Vehicle Breakdown</option>
-              <option value="water_logging">Water Logging</option>
-              <option value="tree_fall">Tree Fall</option>
-              <option value="congestion">Congestion</option>
-              <option value="pot_holes">Potholes</option>
-              <option value="road_conditions">Road Conditions</option>
-              <option value="debris">Debris</option>
-              <option value="others">Others</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Event Type</label>
+            <select id="sim-type" required>
+              <!-- Populated dynamically -->
             </select>
           </div>
 
@@ -190,6 +182,21 @@
             <select id="sim-corridor">
               <!-- Populated dynamically -->
             </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Zone</label>
+              <select id="sim-zone">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Police Station</label>
+              <select id="sim-station">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
           </div>
 
           <div class="form-row">
@@ -228,17 +235,24 @@
             </div>
           </div>
 
+          <div class="form-row">
+            <div class="form-group">
+              <label>Direction</label>
+              <select id="sim-direction">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Vehicle Type</label>
+              <select id="sim-veh">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label>Vehicle Type (if applicable)</label>
-            <select id="sim-veh">
-              <option value="none">None / Not Applicable</option>
-              <option value="heavy_vehicle">Heavy Vehicle</option>
-              <option value="bmtc_bus">BMTC Bus</option>
-              <option value="truck">Truck</option>
-              <option value="car">Car</option>
-              <option value="two_wheeler">Two Wheeler</option>
-              <option value="auto_rickshaw">Auto Rickshaw</option>
-            </select>
+            <label>Event Description (NLP Context)</label>
+            <textarea id="sim-desc" class="form-control" rows="2" placeholder="E.g., truck broke down blocking left lane..."></textarea>
           </div>
 
           <button type="submit" class="btn btn-primary" id="sim-submit-btn">
@@ -361,7 +375,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2"></script>
 <script>
   lucide.createIcons();
 </script>
