@@ -495,12 +495,27 @@ class ForecastingEngine:
 # ─── Save / Load ─────────────────────────────────────────────────────────────
 
 def save_models(engine: ForecastingEngine, severity_result: dict, duration_result: dict):
-    """Save trained models and metrics."""
+    """Save trained model components and metrics.
+    
+    We save individual components rather than the full ForecastingEngine object
+    to avoid pickle module-reference issues (__main__ vs backend.forecasting).
+    """
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Save the full engine
+    # Save individual components (avoids __main__ pickle issue)
+    components = {
+        "severity_pipeline": engine.severity_pipeline,
+        "severity_le": engine.severity_le,
+        "severity_metrics": engine.severity_metrics,
+        "duration_pipeline": engine.duration_pipeline,
+        "duration_metrics": engine.duration_metrics,
+        "knn_model": engine.knn_model,
+        "knn_preprocessor": engine.knn_preprocessor,
+        "knn_ref_data": engine.knn_ref_data,
+        "knn_features": engine.knn_features,
+    }
     with open(MODEL_DIR / "forecasting_engine.pkl", "wb") as f:
-        pickle.dump(engine, f)
+        pickle.dump(components, f)
     
     # Save metrics as JSON for easy inspection
     metrics = {
@@ -516,9 +531,28 @@ def save_models(engine: ForecastingEngine, severity_result: dict, duration_resul
 
 
 def load_engine() -> ForecastingEngine:
-    """Load a saved forecasting engine."""
+    """Load a saved forecasting engine from component dict."""
     with open(MODEL_DIR / "forecasting_engine.pkl", "rb") as f:
-        return pickle.load(f)
+        components = pickle.load(f)
+    
+    # Reconstruct the engine from components
+    severity_model = {
+        "pipeline": components["severity_pipeline"],
+        "label_encoder": components["severity_le"],
+        "metrics": components["severity_metrics"],
+    }
+    duration_model = {
+        "pipeline": components["duration_pipeline"],
+        "metrics": components["duration_metrics"],
+    }
+    knn_index = {
+        "knn_model": components["knn_model"],
+        "preprocessor": components["knn_preprocessor"],
+        "reference_data": components["knn_ref_data"],
+        "knn_features": components["knn_features"],
+    }
+    
+    return ForecastingEngine(severity_model, duration_model, knn_index)
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────

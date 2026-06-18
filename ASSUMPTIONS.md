@@ -109,3 +109,37 @@ The model has no information about:
 - Historical resource deployment outcomes
 
 These gaps are acceptable for a prototype that demonstrates the concept.
+
+---
+
+## Phase 3 — Resource Recommendation Engine
+
+### Critical Disclaimer
+
+**The recommendation engine is entirely rule/heuristic-based.** The dataset has zero ground truth for:
+- How many officers were actually deployed to any event
+- How many barricades were placed
+- Which diversion routes were used
+- Whether the deployment was adequate or insufficient
+
+This is stated upfront in every API response and in the demo. Judges should understand that the recommendation layer demonstrates the *architecture* for operationalizing forecasts, not a claim of "learned" resource optimization.
+
+### How Officer/Barricade Numbers Were Anchored
+
+The numbers are not arbitrary. They're derived from:
+
+1. **Road closure frequency by cause** (from data): VIP movements need closure 80% of the time → highest resource allocation. Vehicle breakdowns only 4.3% → lowest.
+
+2. **Duration patterns** (from Phase 1): construction events last hours → sustained deployment. Accidents clear in ~40 min → quick response.
+
+3. **Severity tier** (from Phase 2 model): High severity → more resources, Medium → standard, Low → monitoring only.
+
+4. **Standard traffic management benchmarks**: A typical Bengaluru junction has 2-4 officers. A major road closure needs 6-10. Large events historically get 15-30+.
+
+### Diversion Suggestions
+
+- Based on **centroid distance** (haversine) from the corridor adjacency table
+- Hour-aware: compares historical event frequency at the specific hour on both the affected and alternate corridor
+- Warns when the suggested alternate is historically busier
+- For "Non-corridor" events, explicitly states that local on-ground assessment is needed
+- **Does NOT account for**: real-time traffic, road connectivity, or actual driving distance (only centroid-to-centroid distance)
