@@ -492,7 +492,7 @@ async function loadCorridorDropdowns() {
   populate('sim-type', summary.event_types, 'Select type...');
   populate('sim-zone', summary.zones, 'Select zone...');
   populate('sim-station', summary.police_stations, 'Select station...');
-  populate('sim-direction', summary.directions, 'Select direction...');
+
   
   const vehOptions = summary.veh_types.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
   const vehEl = document.getElementById('sim-veh');
@@ -517,7 +517,7 @@ async function runSimulation(e) {
       corridor: document.getElementById('sim-corridor').value,
       zone: document.getElementById('sim-zone').value,
       police_station: document.getElementById('sim-station').value,
-      direction: document.getElementById('sim-direction').value,
+      direction: "Unknown",
       hour_of_day: parseInt(document.getElementById('sim-hour').value),
       day_of_week: parseInt(document.getElementById('sim-day').value),
       is_weekend: parseInt(document.getElementById('sim-weekend').value),
@@ -557,9 +557,14 @@ function renderForecastResults(result) {
   const confidencePct = Math.round(f.severity_confidence * 100);
   const confColor = f.severity_tier === 'High' ? '#ef4444' : '#34d399';
 
-  let durationDisplay = `${f.expected_duration_min} min`;
+  let hrs = Math.floor(f.expected_duration_min / 60);
+  let mins = Math.round(f.expected_duration_min % 60);
+  let durationDisplay = hrs > 0 ? `${hrs} hours ${mins} mins` : `${mins} mins`;
   if (f.analog_duration_median_min) {
-    durationDisplay += ` <span class="text-muted">(analog median: ${f.analog_duration_median_min} min)</span>`;
+    let aHrs = Math.floor(f.analog_duration_median_min / 60);
+    let aMins = Math.round(f.analog_duration_median_min % 60);
+    let aDisplay = aHrs > 0 ? `${aHrs} hours ${aMins} mins` : `${aMins} mins`;
+    durationDisplay += ` <span class="text-muted">(analog median: ${aDisplay})</span>`;
   }
 
   // Build actions HTML
@@ -656,9 +661,6 @@ function renderForecastResults(result) {
       <div class="result-section-title"><i data-lucide="history" style="width:16px;height:16px;"></i> Past Similar Incidents</div>
       ${similarHtml}
     </div>
-
-    <!-- Disclaimer -->
-    <div class="disclaimer">${r.disclaimer}</div>
   `;
   if (window.lucide) lucide.createIcons();
 }
