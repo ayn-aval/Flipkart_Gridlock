@@ -401,7 +401,6 @@ function createMapplsMarker(point) {
       <strong>Severity:</strong> <span style="color:${color}">${point.severity_tier}</span><br/>
       ${point.hour_of_day != null ? `<strong>Hour:</strong> ${String(point.hour_of_day).padStart(2, '0')}:00 IST<br/>` : ''}
       ${point.requires_road_closure ? '<strong style="display:flex;align-items:center;gap:4px;color:#d97706;"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Road Closure Required</strong><br/>' : ''}
-      ${point.description ? `<em>"${point.description}"</em>` : ''}
     </div>
   `;
 
