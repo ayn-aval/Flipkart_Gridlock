@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAW_CSV = PROJECT_ROOT / "Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv"
+RAW_CSV = PROJECT_ROOT / "data" / "raw" / "astram_events.csv"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 CLEAN_CSV = PROCESSED_DIR / "events_clean.csv"
 CORRIDOR_CENTROIDS_CSV = PROCESSED_DIR / "corridor_centroids.csv"

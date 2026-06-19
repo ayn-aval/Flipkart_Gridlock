@@ -159,11 +159,13 @@ class FeedbackRequest(BaseModel):
 #  GET /events — Query Historical Events
 # ═══════════════════════════════════════════════════════════════════════════════
 
+EVENT_DRIVEN_CAUSES = ["public_event", "procession", "vip_movement", "protest", "construction"]
+
 @app.get("/events", tags=["Historical Data"])
 def get_events(
     corridor: Optional[str] = Query(None, description="Filter by corridor name"),
     event_cause: Optional[str] = Query(None, description="Filter by event cause"),
-    severity: Optional[str] = Query(None, description="Filter by severity tier (Low/Medium/High)"),
+    severity: Optional[str] = Query(None, description="Filter by severity tier (Low/High)"),
     status: Optional[str] = Query(None, description="Filter by status (closed/active/resolved)"),
     event_type: Optional[str] = Query(None, description="Filter by event type (planned/unplanned)"),
     is_event_driven: Optional[int] = Query(None, description="1 = event-driven causes only"),
@@ -190,11 +192,14 @@ def get_events(
     if event_type:
         df = df[df["event_type"] == event_type]
     if is_event_driven is not None:
-        df = df[df["is_event_driven"] == is_event_driven]
+        if is_event_driven == 1:
+            df = df[df["event_cause"].isin(EVENT_DRIVEN_CAUSES)]
+        else:
+            df = df[~df["event_cause"].isin(EVENT_DRIVEN_CAUSES)]
     if date_from:
-        df = df[df["date"] >= date_from]
+        df = df[df["start_datetime"] >= date_from]
     if date_to:
-        df = df[df["date"] <= date_to]
+        df = df[df["start_datetime"] <= date_to]
 
     total = len(df)
     df = df.iloc[offset:offset + limit]
@@ -224,8 +229,8 @@ def get_events_summary():
         "total_events": len(df),
         "by_severity": df["severity_tier"].value_counts().to_dict() if "severity_tier" in df.columns else {},
         "by_event_cause": df["event_cause"].value_counts().to_dict(),
-        "event_driven_count": len(df),
-        "model_accuracy_pct": forecast_engine.severity_metrics["accuracy"] * 100 if forecast_engine else 71.9,
+        "event_driven_count": int(df["event_cause"].isin(EVENT_DRIVEN_CAUSES).sum()),
+        "model_accuracy_pct": forecast_engine.severity_metrics["accuracy"] * 100 if forecast_engine else None,
         "road_closure_count": int(df["requires_road_closure"].sum()),
         "corridors": sorted(df["corridor"].dropna().unique().tolist()),
         "zones": sorted(df["zone"].dropna().unique().tolist()),

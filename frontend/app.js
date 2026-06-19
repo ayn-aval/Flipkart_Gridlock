@@ -107,8 +107,8 @@ async function loadOverview() {
   document.getElementById('stat-closures').textContent = summary.road_closure_count.toLocaleString();
   document.getElementById('stat-corridors').textContent = summary.corridors.length;
   
-  const acc = summary.model_accuracy_pct || 71.9;
-  document.getElementById('stat-accuracy').textContent = acc.toFixed(1) + '%';
+  const acc = summary.model_accuracy_pct;
+  document.getElementById('stat-accuracy').textContent = acc != null ? acc.toFixed(1) + '%' : '—';
 
   if (summary.date_range.min && summary.date_range.max) {
     document.getElementById('stat-date-range').textContent =
