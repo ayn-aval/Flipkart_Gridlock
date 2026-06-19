@@ -623,37 +623,37 @@ function renderForecastResults(result) {
 
     <!-- Resource Recommendation -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="shield" style="width:16px;height:16px;"></i> Resource Recommendation</div>
+      <div class="result-section-title"><i data-lucide="shield" style="width:16px;height:16px;"></i> Suggested Deployment Plan</div>
       <div class="metric-grid">
         <div class="metric-item">
-          <span class="metric-label">Officers Required</span>
+          <span class="metric-label">Traffic Police Personnel Needed</span>
           <span class="metric-value text-blue">${r.manpower.officers_min}–${r.manpower.officers_max}</span>
         </div>
         <div class="metric-item">
-          <span class="metric-label">Barricade Units</span>
+          <span class="metric-label">Barricades Required</span>
           <span class="metric-value text-cyan">${r.barricading.barricades_min}–${r.barricading.barricades_max}</span>
         </div>
       </div>
       <div class="text-muted" style="font-size: 0.8rem; margin-top: 8px;">
-        <strong>Basis:</strong> ${r.basis}
+        <strong>Reasoning:</strong> ${r.basis}
       </div>
     </div>
 
     <!-- Action Checklist -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="check-square" style="width:16px;height:16px;"></i> Action Checklist</div>
+      <div class="result-section-title"><i data-lucide="check-square" style="width:16px;height:16px;"></i> On-Ground Action Plan</div>
       <ul class="action-list">${actionsHtml}</ul>
     </div>
 
     <!-- Diversion Suggestions -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="shuffle" style="width:16px;height:16px;"></i> Diversion Suggestions</div>
+      <div class="result-section-title"><i data-lucide="shuffle" style="width:16px;height:16px;"></i> Suggested Traffic Diversions</div>
       <div class="diversion-list">${diversionsHtml}</div>
     </div>
 
     <!-- Similar Past Events -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="history" style="width:16px;height:16px;"></i> Similar Historical Events</div>
+      <div class="result-section-title"><i data-lucide="history" style="width:16px;height:16px;"></i> Past Similar Incidents</div>
       ${similarHtml}
     </div>
 

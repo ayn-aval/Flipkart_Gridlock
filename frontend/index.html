@@ -32,11 +32,11 @@
      NAVIGATION TABS
      ════════════════════════════════════════════════════════════════════ -->
 <nav class="nav-tabs">
-  <button class="nav-tab active" data-tab="overview" id="tab-overview"><i data-lucide="layout-dashboard"></i> Overview</button>
-  <button class="nav-tab" data-tab="map" id="tab-map"><i data-lucide="map"></i> Event Map</button>
-  <button class="nav-tab" data-tab="simulate" id="tab-simulate"><i data-lucide="zap"></i> Simulate Event</button>
+  <button class="nav-tab active" data-tab="overview" id="tab-overview"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+  <button class="nav-tab" data-tab="map" id="tab-map"><i data-lucide="map"></i> Live Map</button>
+  <button class="nav-tab" data-tab="simulate" id="tab-simulate"><i data-lucide="zap"></i> Response Planner</button>
   <button class="nav-tab" data-tab="analytics" id="tab-analytics"><i data-lucide="bar-chart-2"></i> Analytics</button>
-  <button class="nav-tab" data-tab="learning" id="tab-learning"><i data-lucide="refresh-cw"></i> Learning Loop</button>
+  <button class="nav-tab" data-tab="learning" id="tab-learning"><i data-lucide="refresh-cw"></i> System Accuracy</button>
 </nav>
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -85,7 +85,7 @@
     <div class="charts-grid">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="flame"></i> Events by Cause</h3>
+          <h3 class="card-title"><i data-lucide="flame"></i> Incidents by Cause</h3>
         </div>
         <div class="chart-wrapper">
           <canvas id="chart-causes"></canvas>
@@ -93,7 +93,7 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="clock"></i> Events by Hour (IST)</h3>
+          <h3 class="card-title"><i data-lucide="clock"></i> Incident Timings (IST)</h3>
         </div>
         <div class="chart-wrapper">
           <canvas id="chart-hours"></canvas>
@@ -101,7 +101,7 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="alert-triangle"></i> Severity Distribution</h3>
+          <h3 class="card-title"><i data-lucide="alert-triangle"></i> Severity Breakdown</h3>
         </div>
         <div class="chart-wrapper">
           <canvas id="chart-severity"></canvas>
@@ -109,7 +109,7 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="map-pin"></i> Top Corridors</h3>
+          <h3 class="card-title"><i data-lucide="map-pin"></i> Most Affected Corridors</h3>
         </div>
         <div class="chart-wrapper">
           <canvas id="chart-corridors"></canvas>
@@ -155,7 +155,7 @@
       <!-- Input Form -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="zap"></i> Event Simulation</h3>
+          <h3 class="card-title"><i data-lucide="zap"></i> Plan Incident Response</h3>
         </div>
         <form class="sim-form" id="sim-form" onsubmit="runSimulation(event)">
           <div class="form-group">
@@ -251,7 +251,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary" id="sim-submit-btn">
-            <i data-lucide="play"></i> Run Forecast
+            <i data-lucide="play"></i> Generate Response Plan
           </button>
         </form>
       </div>
@@ -272,7 +272,7 @@
     <div class="charts-grid">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="bar-chart-2"></i> Top 10 Hotspot Corridors</h3>
+          <h3 class="card-title"><i data-lucide="bar-chart-2"></i> Top 10 Problem Corridors</h3>
         </div>
         <div class="chart-wrapper" style="height: 340px;">
           <canvas id="chart-hotspots"></canvas>
@@ -280,7 +280,7 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="alert-octagon"></i> Road Closure Rate by Cause</h3>
+          <h3 class="card-title"><i data-lucide="alert-octagon"></i> Chance of Road Closure by Cause</h3>
         </div>
         <div class="chart-wrapper" style="height: 340px;">
           <canvas id="chart-closure-rate"></canvas>
@@ -291,7 +291,7 @@
     <!-- EDA Gallery -->
     <div class="card mt-12">
       <div class="card-header">
-        <h3 class="card-title"><i data-lucide="camera"></i> EDA Visualizations</h3>
+        <h3 class="card-title"><i data-lucide="camera"></i> Detailed Charts</h3>
       </div>
       <div id="eda-gallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px;">
         <!-- Populated dynamically -->
@@ -323,7 +323,7 @@
       <!-- Scatter Plot: Predicted vs Actual Duration -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="target"></i> Duration: Predicted vs. Actual</h3>
+          <h3 class="card-title"><i data-lucide="target"></i> Clearance Time: Predicted vs. Actual</h3>
           <p class="text-sm text-dim">Ideal predictions fall on the diagonal line.</p>
         </div>
         <div class="chart-wrapper" style="height: 340px;">
@@ -334,7 +334,7 @@
       <!-- Live Log Table -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="radio"></i> Live Learning Log</h3>
+          <h3 class="card-title"><i data-lucide="radio"></i> Live Tracker & Model Accuracy</h3>
           <p class="text-sm text-dim">Streaming from /feedback/log (auto-updates)</p>
         </div>
         <div style="height: 340px; overflow-y: auto; padding: 0 20px 20px 20px;">
@@ -367,7 +367,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=3"></script>
+<script src="/static/app.js?v=4"></script>
 <script>
   lucide.createIcons();
 </script>

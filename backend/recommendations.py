@@ -38,16 +38,16 @@ CLEAN_CSV = PROCESSED_DIR / "events_clean.csv"
 #  1. Road closure frequency by cause (from data audit):
 #     - vip_movement: 80% need road closure → high resource needs
 #     - public_event: 46% need road closure → high resource needs
-#     - protest: 40% need road closure → high resource needs
+#     - Protest - 40% need road closure → high resource needs
 #     - tree_fall: 39% need road closure → moderate (physical obstruction)
-#     - construction: 26% need road closure → moderate-high (planned)
-#     - procession: 26% need road closure → moderate-high (moving event)
+#     - Construction work - 26% need road closure → moderate-high (planned)
+#     - Procession - 26% need road closure → moderate-high (moving event)
 #
 #  2. Duration tiers (from Phase 1):
-#     - vehicle_breakdown: median ~41 min → quick response
-#     - accident: median ~40 min → quick response + investigation
-#     - construction: median ~296 min → sustained presence
-#     - water_logging: median variable → area management
+#     - vehicle_breakdown: usual clearance time is ~41 min → quick response
+#     - Accident - usual clearance time is ~40 min → quick response + investigation
+#     - Construction work - usual clearance time is ~296 min → sustained presence
+#     - water_logging: usual clearance time is variable → area management
 #
 #  3. Severity tier (from Phase 2 model output):
 #     - High → more officers, more barricades
@@ -76,7 +76,7 @@ RESOURCE_RULES = {
             "Coordinate with tow/mechanic service",
             "Monitor for secondary congestion",
         ],
-        "basis": "Low severity vehicle breakdown: minimal lane blockage, "
+        "basis": "Minor Impact: Vehicle breakdown - minimal lane blockage, "
                  "typically cleared within 30-60 min. Road closure rate for "
                  "vehicle breakdowns is only 4.3% historically."
     },
@@ -87,10 +87,10 @@ RESOURCE_RULES = {
             "Deploy traffic cones and warning signs",
             "Set up lane diversion around the breakdown",
             "Coordinate with tow/mechanic service (priority)",
-            "Monitor upstream junctions for spillback",
+            "Monitor upstream junctions for traffic jam spreading backwards",
             "Alert nearby patrol units if congestion builds",
         ],
-        "basis": "Medium severity vehicle breakdown: partial lane blockage on a "
+        "basis": "Moderate Impact: Vehicle breakdown - partial lane blockage on a "
                  "major corridor, expected 30-120 min to clear."
     },
     ("vehicle_breakdown", "High", True): {
@@ -102,9 +102,9 @@ RESOURCE_RULES = {
             "Set up traffic diversion signs at approach roads",
             "Station officers at diversion points",
             "Coordinate emergency tow service",
-            "Alert control room for corridor-level management",
+            "Alert control room for main road traffic management",
         ],
-        "basis": "High severity vehicle breakdown requiring road closure: likely a "
+        "basis": "Major Impact: vehicle breakdown requiring road closure: likely a "
                  "heavy vehicle or multi-vehicle situation on a key corridor."
     },
 
@@ -119,8 +119,8 @@ RESOURCE_RULES = {
             "Coordinate ambulance if injuries reported",
             "File FIR if required",
         ],
-        "basis": "Low severity accident: minor incident, no major road blockage. "
-                 "Median accident duration is ~40 min."
+        "basis": "Minor Impact: Accident - minor incident, no major road blockage. "
+                 "Usual clearance time is accident about 40 min."
     },
     ("accident", "Medium", False): {
         "officers_min": 3, "officers_max": 5,
@@ -133,7 +133,7 @@ RESOURCE_RULES = {
             "Alert upstream junctions",
             "File FIR and coordinate with investigating officer",
         ],
-        "basis": "Medium severity accident on a corridor: partial lane blockage, "
+        "basis": "Moderate Impact: accident on a corridor: partial lane blockage, "
                  "possible injuries, 30-120 min expected."
     },
     ("accident", "High", True): {
@@ -149,7 +149,7 @@ RESOURCE_RULES = {
             "Preserve scene for investigation",
             "Update control room with situation reports",
         ],
-        "basis": "High severity accident requiring road closure: major incident, "
+        "basis": "Major Impact: accident requiring road closure: major incident, "
                  "likely multi-vehicle or involving heavy vehicles."
     },
 
@@ -163,7 +163,7 @@ RESOURCE_RULES = {
             "Verify construction permit and timeline",
             "Periodic patrol check",
         ],
-        "basis": "Low severity construction: minor works (e.g., utility repair), "
+        "basis": "Minor Impact: Construction work - minor works (e.g., utility repair), "
                  "no major lane closure. 26% of construction events need road closure."
     },
     ("construction", "Medium", False): {
@@ -177,8 +177,8 @@ RESOURCE_RULES = {
             "Coordinate with construction contractor on timeline",
             "Ensure night-time reflective markers are placed",
         ],
-        "basis": "Medium severity construction on a corridor: lane closure but "
-                 "not full road closure. Median construction duration is ~296 min."
+        "basis": "Moderate Impact: construction on a corridor: lane closure but "
+                 "not full road closure. Usual clearance time is construction about 296 min."
     },
     ("construction", "High", True): {
         "officers_min": 4, "officers_max": 8,
@@ -193,8 +193,8 @@ RESOURCE_RULES = {
             "Plan for extended deployment (construction may last days)",
             "Ensure emergency vehicle access is maintained",
         ],
-        "basis": "High severity construction with road closure: major infrastructure "
-                 "work (metro, flyover, pipeline). Historically lasts 5+ hours."
+        "basis": "Major Impact: construction with road closure: major infrastructure "
+                 "work (metro, flyover, pipeline). Usually lasts 5+ hours."
     },
 
     # ─── Public Event ───────────────────────────────────────────────────
@@ -208,7 +208,7 @@ RESOURCE_RULES = {
             "Coordinate with event organizers on schedule",
             "Plan post-event traffic dispersal",
         ],
-        "basis": "Low severity public event: small gathering (e.g., local ceremony), "
+        "basis": "Minor Impact: Public event - small gathering (e.g., local ceremony), "
                  "limited traffic impact. 46% of public events need road closure."
     },
     ("public_event", "Medium", False): {
@@ -223,7 +223,7 @@ RESOURCE_RULES = {
             "Plan for staggered crowd dispersal",
             "Alert nearby hospitals for standby",
         ],
-        "basis": "Medium severity public event: moderate crowd expected, "
+        "basis": "Moderate Impact: Public event - moderate crowd expected, "
                  "some traffic disruption. Historical events vary widely."
     },
     ("public_event", "High", True): {
@@ -241,7 +241,7 @@ RESOURCE_RULES = {
             "Arrange BMTC shuttle service if needed",
             "Plan multi-phase traffic restoration post-event",
         ],
-        "basis": "High severity public event with road closure: large gathering "
+        "basis": "Major Impact: public event with road closure: large gathering "
                  "(cricket match, festival, rally). Needs comprehensive traffic plan."
     },
 
@@ -255,8 +255,8 @@ RESOURCE_RULES = {
             "Alert intersecting corridors",
             "Monitor procession speed and route adherence",
         ],
-        "basis": "Low severity procession: small group, no road closure. "
-                 "Median procession duration is ~37 min."
+        "basis": "Minor Impact: Procession - small group, no road closure. "
+                 "Usual clearance time is procession about 37 min."
     },
     ("procession", "Medium", False): {
         "officers_min": 5, "officers_max": 8,
@@ -269,7 +269,7 @@ RESOURCE_RULES = {
             "Coordinate with procession organizers on timing",
             "Re-open road segments behind the procession",
         ],
-        "basis": "Medium severity procession on a corridor: moderate-sized group "
+        "basis": "Moderate Impact: procession on a corridor: moderate-sized group "
                  "moving through traffic. Rolling closure needed."
     },
     ("procession", "High", True): {
@@ -278,16 +278,16 @@ RESOURCE_RULES = {
         "actions": [
             "Full route closure ahead of procession",
             "Deploy officers at every junction on the route",
-            "Set up diversion routes for cross-traffic",
+            "Set up diversion routes for intersecting traffic",
             "Coordinate with organizers on strict timing",
             "Escort with patrol vehicles (front and rear)",
             "Deploy crowd management at gathering points",
             "Issue traffic advisory for the route",
             "Plan phased road reopening behind procession",
         ],
-        "basis": "High severity procession with road closure: large procession "
+        "basis": "Major Impact: procession with road closure: large procession "
                  "(religious, political) requiring full route management. "
-                 "26% of processions historically need road closure."
+                 "26% of processions usually need road closure."
     },
 
     # ─── VIP Movement ───────────────────────────────────────────────────
@@ -300,7 +300,7 @@ RESOURCE_RULES = {
             "Coordinate with VIP security team on timing",
             "Green-wave signal coordination if possible",
         ],
-        "basis": "Low severity VIP movement: standard VIP transit without road closure. "
+        "basis": "Minor Impact: VIP movement - standard VIP transit without road closure. "
                  "80% of VIP movements need road closure — even 'low severity' ones "
                  "get higher baseline resources."
     },
@@ -308,19 +308,19 @@ RESOURCE_RULES = {
         "officers_min": 10, "officers_max": 25,
         "barricades_min": 10, "barricades_max": 25,
         "actions": [
-            "Full route sanitization and lockdown",
+            "Full route clearing and securing",
             "Road closure 15-30 min before VIP arrival",
             "Deploy officers at every junction on the route",
             "Anti-sabotage check of the route",
             "Coordinate with SPG/NSG/VIP security team",
-            "Set up diversion routes for all cross-traffic",
+            "Set up diversion routes for all intersecting traffic",
             "Deploy bomb disposal squad for route clearance",
             "Station ambulance and fire service on standby",
             "Issue traffic advisory with route and timing",
             "Phased reopening after VIP transit",
         ],
-        "basis": "High severity VIP movement with road closure: high-profile dignitary. "
-                 "80% of VIP movements historically require road closure. "
+        "basis": "Major Impact: VIP movement with road closure: high-profile dignitary. "
+                 "80% of VIP movements usually require road closure. "
                  "Highest resource intensity per event in the dataset."
     },
 
@@ -336,7 +336,7 @@ RESOURCE_RULES = {
             "Alert rapid response unit for standby",
             "Ensure emergency vehicle access",
         ],
-        "basis": "Low severity protest: small, permitted demonstration. "
+        "basis": "Minor Impact: Protest - small, permitted demonstration. "
                  "40% of protests need road closure. Higher baseline resources "
                  "due to potential for escalation."
     },
@@ -355,9 +355,9 @@ RESOURCE_RULES = {
             "Issue public advisory to avoid the area",
             "Document and monitor via CCTV",
         ],
-        "basis": "High severity protest with road closure: large/unplanned protest "
+        "basis": "Major Impact: protest with road closure: large/unplanned protest "
                  "blocking a major road. 40% of protests need road closure. "
-                 "Median protest duration is ~25 min but can escalate."
+                 "Usual clearance time is protest about 25 min but can escalate."
     },
 
     # ─── Water Logging ──────────────────────────────────────────────────
@@ -370,7 +370,7 @@ RESOURCE_RULES = {
             "Coordinate with BBMP for drainage clearance",
             "Monitor water level changes",
         ],
-        "basis": "Low severity waterlogging: shallow, passable with caution."
+        "basis": "Minor Impact: Waterlogging - shallow, passable with caution."
     },
     ("water_logging", "Medium", False): {
         "officers_min": 2, "officers_max": 4,
@@ -382,7 +382,7 @@ RESOURCE_RULES = {
             "Monitor for stranded vehicles",
             "Coordinate with nearby corridors for diversion",
         ],
-        "basis": "Medium severity waterlogging: partial lane blockage, "
+        "basis": "Moderate Impact: Waterlogging - partial lane blockage, "
                  "variable duration depending on rainfall."
     },
     ("water_logging", "High", True): {
@@ -398,7 +398,7 @@ RESOURCE_RULES = {
             "Monitor underpass water levels",
             "Issue weather-based traffic advisory",
         ],
-        "basis": "High severity waterlogging with road closure: deep flooding, "
+        "basis": "Major Impact: waterlogging with road closure: deep flooding, "
                  "impassable road. Common at underpasses and low-lying corridors."
     },
 
@@ -412,7 +412,7 @@ RESOURCE_RULES = {
             "Coordinate with BBMP tree-clearing crew",
             "Check for downed power lines (alert BESCOM if found)",
         ],
-        "basis": "Low severity tree fall: partial branch fall, navigable."
+        "basis": "Minor Impact: Tree fall - partial branch fall, navigable."
     },
     ("tree_fall", "High", True): {
         "officers_min": 3, "officers_max": 6,
@@ -425,8 +425,8 @@ RESOURCE_RULES = {
             "Ensure no damage to vehicles/property underneath",
             "Clear debris after tree removal",
         ],
-        "basis": "High severity tree fall with road closure: full tree across road. "
-                 "39% of tree falls need road closure. Median duration ~90 min."
+        "basis": "Major Impact: tree fall with road closure: full tree across road. "
+                 "39% of tree falls need road closure. Usual clearance time is duration ~90 min."
     },
 
     # ─── Road Conditions ────────────────────────────────────────────────
@@ -438,7 +438,7 @@ RESOURCE_RULES = {
             "Alert BBMP for road repair",
             "Monitor for accident risk",
         ],
-        "basis": "Low severity road condition issue: minor hazard, manageable."
+        "basis": "Minor Impact: road condition issue: minor hazard, manageable."
     },
     ("road_conditions", "High", True): {
         "officers_min": 2, "officers_max": 4,
@@ -449,7 +449,7 @@ RESOURCE_RULES = {
             "Coordinate with BBMP for emergency repair",
             "Monitor for worsening conditions",
         ],
-        "basis": "High severity road condition issue requiring closure."
+        "basis": "Major Impact: road condition issue requiring closure."
     },
 
     # ─── Pot Holes ──────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ RESOURCE_RULES = {
             "Report to BBMP for repair",
             "Monitor for accident risk at night",
         ],
-        "basis": "Low severity potholes: road hazard, minimal traffic management needed."
+        "basis": "Minor Impact: Pothole - road hazard, minimal traffic management needed."
     },
     ("pot_holes", "High", True): {
         "officers_min": 1, "officers_max": 3,
@@ -472,7 +472,7 @@ RESOURCE_RULES = {
             "Priority report to BBMP for emergency repair",
             "Night-time illumination of the hazard",
         ],
-        "basis": "High severity pothole requiring lane closure."
+        "basis": "Major Impact: pothole requiring lane closure."
     },
 
     # ─── Congestion ─────────────────────────────────────────────────────
@@ -484,21 +484,21 @@ RESOURCE_RULES = {
             "Clear any obstructions causing the congestion",
             "Monitor and report if congestion worsens",
         ],
-        "basis": "Low severity congestion: minor traffic buildup."
+        "basis": "Minor Impact: Traffic jam - minor traffic buildup."
     },
     ("congestion", "High", False): {
         "officers_min": 3, "officers_max": 6,
         "barricades_min": 2, "barricades_max": 4,
         "actions": [
             "Deploy officers at key junctions in the congested corridor",
-            "Manual traffic signal management (green-wave)",
+            "Manual traffic signal management (green signal corridor)",
             "Implement temporary one-way or lane restrictions",
             "Clear any secondary obstructions",
             "Alert upstream corridors to divert traffic",
             "Coordinate with control room for signal timing adjustments",
         ],
-        "basis": "High severity congestion on a major corridor. "
-                 "Median congestion duration is ~72 min."
+        "basis": "Major Impact: congestion on a major corridor. "
+                 "Usual clearance time is congestion about 72 min."
     },
 
     # ─── Debris ─────────────────────────────────────────────────────────
@@ -510,7 +510,7 @@ RESOURCE_RULES = {
             "Coordinate clearing crew",
             "Direct traffic around obstruction",
         ],
-        "basis": "Low severity debris on road."
+        "basis": "Minor Impact: debris on road."
     },
     ("debris", "High", True): {
         "officers_min": 2, "officers_max": 4,
@@ -521,7 +521,7 @@ RESOURCE_RULES = {
             "Set up diversion route",
             "Verify no hazardous material",
         ],
-        "basis": "High severity debris requiring road closure."
+        "basis": "Major Impact: debris requiring road closure."
     },
 
     # ─── Others / Fallback ──────────────────────────────────────────────
@@ -544,7 +544,7 @@ RESOURCE_RULES = {
             "Coordinate with relevant department",
             "Report to control room with updates",
         ],
-        "basis": "Medium severity miscellaneous event."
+        "basis": "Moderate Impact: miscellaneous event."
     },
     ("others", "High", True): {
         "officers_min": 3, "officers_max": 6,
@@ -555,7 +555,7 @@ RESOURCE_RULES = {
             "Coordinate with relevant departments",
             "Update control room",
         ],
-        "basis": "High severity miscellaneous event with road closure."
+        "basis": "Major Impact: miscellaneous event with road closure."
     },
 }
 
@@ -852,7 +852,7 @@ def run_demo():
         print(f"     Severity: {forecast['severity_tier']} ({forecast['severity_confidence']:.0%} confidence)")
         print(f"     Duration: ~{forecast['expected_duration_min']} min")
         if "analog_duration_median_min" in forecast:
-            print(f"     Analog:   ~{forecast['analog_duration_median_min']} min (median of similar events)")
+            print(f"     Analog:   ~{forecast['analog_duration_median_min']} min (usual clearance time is of similar events)")
         
         # Print recommendation
         print(f"\n  👮 MANPOWER")
