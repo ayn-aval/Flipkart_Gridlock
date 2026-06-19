@@ -21,7 +21,7 @@ from pathlib import Path
 # Paths & URLs
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "events_clean.csv"
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://127.0.0.1:8000"
 
 def load_data():
     """Load the processed event data."""
