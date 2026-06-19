@@ -5,12 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gridlock — Event-Driven Congestion Forecasting</title>
   <meta name="description" content="Forecast event-related traffic impact and recommend optimal resource deployment for Bengaluru traffic corridors." />
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Leaflet MarkerCluster CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <!-- MapMyIndia (Mappls) CSS and scripts will be loaded dynamically or don't require external CSS initially -->
   <!-- Dashboard CSS -->
   <link rel="stylesheet" href="/static/index.css?v=2" />
 </head>
@@ -366,10 +361,7 @@
 <!-- ════════════════════════════════════════════════════════════════════
      SCRIPTS
      ════════════════════════════════════════════════════════════════════ -->
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Leaflet MarkerCluster JS -->
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- MapMyIndia scripts are dynamically loaded in app.js via the /config endpoint -->
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Lucide Icons -->

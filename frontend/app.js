@@ -324,43 +324,66 @@ function renderScatterChart(canvasId, { dataPoints }) {
 
 // ─── Map Tab ─────────────────────────────────────────────────────────────────
 
-let map, markerCluster;
+let map;
+let currentMarkers = [];
+let mapplsLoaded = false;
+let mapplsLoadPromise = null;
 
-function initMap() {
-  // Bengaluru center
-  map = L.map('map', {
-    center: [12.97, 77.59],
-    zoom: 12,
-    zoomControl: true,
+async function loadMapplsScripts() {
+  if (mapplsLoadPromise) return mapplsLoadPromise;
+
+  mapplsLoadPromise = new Promise(async (resolve, reject) => {
+    try {
+      const config = await apiFetch('/config');
+      const apiKey = config.mappls_api_key;
+      if (!apiKey) throw new Error("Mappls API key missing in .env");
+
+      // Load main SDK
+      const script1 = document.createElement('script');
+      script1.src = `https://apis.mappls.com/advancedmaps/api/${apiKey}/map_sdk?layer=vector&v=3.0`;
+      
+      script1.onload = () => {
+        // Load plugins after main SDK
+        const script2 = document.createElement('script');
+        script2.src = `https://apis.mappls.com/advancedmaps/api/${apiKey}/map_sdk_plugins?v=3.0`;
+        script2.onload = () => {
+          mapplsLoaded = true;
+          resolve();
+        };
+        script2.onerror = reject;
+        document.head.appendChild(script2);
+      };
+      script1.onerror = reject;
+      document.head.appendChild(script1);
+    } catch (e) {
+      console.error("Failed to load MapMyIndia:", e);
+      reject(e);
+    }
   });
 
-  // Dark tile layer (CartoDB Dark Matter)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19,
-  }).addTo(map);
+  return mapplsLoadPromise;
+}
 
-  markerCluster = L.markerClusterGroup({
-    maxClusterRadius: 40,
-    spiderfyOnMaxZoom: true,
-    iconCreateFunction: function (cluster) {
-      const count = cluster.getChildCount();
-      let size = 'small';
-      let className = 'marker-cluster-small';
-      if (count > 50) { size = 'large'; className = 'marker-cluster-large'; }
-      else if (count > 20) { size = 'medium'; className = 'marker-cluster-medium'; }
+async function initMap() {
+  const mapContainer = document.getElementById('map');
+  
+  try {
+    mapContainer.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#94a3b8;">Loading Map Engine...</div>';
+    await loadMapplsScripts();
+    mapContainer.innerHTML = ''; // clear loading text
 
-      return L.divIcon({
-        html: `<div><span>${count}</span></div>`,
-        className: `marker-cluster ${className}`,
-        iconSize: L.point(40, 40),
-      });
-    },
-  });
+    // Initialize MapMyIndia (Mappls)
+    map = new mappls.Map('map', {
+      center: {lat: 12.97, lng: 77.59},
+      zoom: 12,
+      zoomControl: true,
+    });
 
-  map.addLayer(markerCluster);
-  refreshMap();
+    // Fetch and populate markers
+    refreshMap();
+  } catch(e) {
+    mapContainer.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">Failed to load map. Check .env API key.</div>';
+  }
 }
 
 const SEVERITY_COLORS = {
@@ -368,28 +391,32 @@ const SEVERITY_COLORS = {
   Low: '#34d399',
 };
 
-function createCircleMarker(point) {
+function createMapplsMarker(point) {
   const color = SEVERITY_COLORS[point.severity_tier] || '#60a5fa';
-  const marker = L.circleMarker([point.lat, point.lon], {
-    radius: 6,
-    fillColor: color,
-    fillOpacity: 0.8,
-    color: color,
-    weight: 1,
-    opacity: 0.9,
-  });
-
+  
   const popupHtml = `
     <div class="popup-title">${point.event_cause.replace(/_/g, ' ')}</div>
-    <div class="popup-detail">
+    <div class="popup-detail" style="color: black;">
       <strong>Corridor:</strong> ${point.corridor}<br/>
       <strong>Severity:</strong> <span style="color:${color}">${point.severity_tier}</span><br/>
       ${point.hour_of_day != null ? `<strong>Hour:</strong> ${String(point.hour_of_day).padStart(2, '0')}:00 IST<br/>` : ''}
-      ${point.requires_road_closure ? '<strong style="display:flex;align-items:center;gap:4px;color:var(--accent-amber);"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Road Closure Required</strong><br/>' : ''}
+      ${point.requires_road_closure ? '<strong style="display:flex;align-items:center;gap:4px;color:#d97706;"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Road Closure Required</strong><br/>' : ''}
       ${point.description ? `<em>"${point.description}"</em>` : ''}
     </div>
   `;
-  marker.bindPopup(popupHtml);
+
+  // Use standard Mappls marker with clusters enabled
+  const marker = new mappls.Marker({
+    map: map,
+    position: {lat: point.lat, lng: point.lon},
+    popupHtml: popupHtml,
+    clusters: true,
+    clustersOptions: {
+      color: "white",
+      bgcolor: color
+    }
+  });
+
   return marker;
 }
 
@@ -412,9 +439,13 @@ async function refreshMap() {
 
     const data = await apiFetch(url);
 
-    markerCluster.clearLayers();
+    // Remove existing markers
+    currentMarkers.forEach(m => mappls.remove({map: map, layer: m}));
+    currentMarkers = [];
+
+    // Add new markers
     data.points.forEach(p => {
-      markerCluster.addLayer(createCircleMarker(p));
+      currentMarkers.push(createMapplsMarker(p));
     });
 
     btn.innerHTML = `<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> ${data.count} events`;

@@ -13,6 +13,7 @@ Usage:
 import sys
 import csv
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
@@ -26,6 +27,15 @@ from pydantic import BaseModel, Field
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# ─── Load Environment Variables ────────────────────────────────────────────────
+env_path = PROJECT_ROOT / ".env"
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, val = line.strip().split("=", 1)
+                os.environ[key] = val
+
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 CLEAN_CSV = PROCESSED_DIR / "events_clean.csv"
 LEARNING_LOG = PROCESSED_DIR / "learning_log.csv"
@@ -105,6 +115,16 @@ def startup_load():
             ])
         print("[API] Learning log initialized")
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  GET /config — Application Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/config", tags=["Configuration"])
+def get_config():
+    return {
+        "mappls_api_key": os.environ.get("MAPPLS_API_KEY", "")
+    }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Pydantic Models

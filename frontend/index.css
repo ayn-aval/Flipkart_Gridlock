@@ -424,22 +424,6 @@ h1, h2, h3, h4 {
   background: #000;
 }
 
-/* Customizing Leaflet Dark Mode UI */
-.leaflet-container {
-  background: #050a14 !important;
-}
-.leaflet-popup-content-wrapper {
-  background: rgba(17, 24, 39, 0.9) !important;
-  backdrop-filter: var(--blur-medium);
-  color: var(--text-primary) !important;
-  border-radius: var(--radius-md) !important;
-  border: 1px solid var(--border-subtle) !important;
-  box-shadow: var(--shadow-base) !important;
-}
-.leaflet-popup-tip {
-  background: rgba(17, 24, 39, 0.9) !important;
-  border: 1px solid var(--border-subtle) !important;
-}
 
 /* ─── Form Elements ───────────────────────────────────────────────── */
 select, input[type="text"], input[type="number"], textarea {
