@@ -496,7 +496,7 @@ async function loadCorridorDropdowns() {
   
   const vehOptions = summary.veh_types.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
   const vehEl = document.getElementById('sim-veh');
-  if (vehEl) vehEl.innerHTML = '<option value="none">None / Not Applicable</option>' + vehOptions;
+  vehEl.innerHTML = `<option value="All" selected>All / Any</option>` + vehOptions;
 }
 
 

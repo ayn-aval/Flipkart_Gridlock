@@ -152,8 +152,9 @@ def select_columns(df: pd.DataFrame) -> pd.DataFrame:
     actual_cols = [c for c in keep_cols if c in df.columns]
     df = df[actual_cols]
     
-    # Drop rows without duration (can't train models on them)
-    df = df.dropna(subset=["duration_to_close_min"])
+    # We keep rows without duration_to_close_min so they appear in dashboard summaries.
+    # The forecasting model will drop them during training instead.
+    # df = df.dropna(subset=["duration_to_close_min"])
     
     print(f"[SELECT] Keeping {len(actual_cols)} columns. Final shape: {df.shape}")
     return df
