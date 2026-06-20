@@ -30,7 +30,7 @@ trap cleanup SIGINT SIGTERM
 
 # 1. Start the API Server
 echo "🚀 Launching FastAPI server on port 8000..."
-python3 -m uvicorn backend.api:app --port 8000 > /dev/null 2>&1 &
+python3 -m uvicorn backend.api:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
 API_PID=$!
 
 # Wait for API to become healthy

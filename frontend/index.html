@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gridlock — Event-Driven Congestion Forecasting</title>
+  <title>Namma Route — Event-Driven Congestion Forecasting</title>
   <meta name="description" content="Forecast event-related traffic impact and recommend optimal resource deployment for Bengaluru traffic corridors." />
   <!-- MapMyIndia (Mappls) CSS and scripts will be loaded dynamically or don't require external CSS initially -->
   <!-- Dashboard CSS -->
@@ -16,9 +16,9 @@
      ════════════════════════════════════════════════════════════════════ -->
 <header class="header">
   <div class="header-brand">
-    <i data-lucide="activity" class="logo-icon"></i>
+    <img src="/static/assets/logo.png" alt="Namma Route Logo" style="height: 70px; width: 70px; object-fit: contain; margin-right: 20px; transform: scale(2.2); transform-origin: center;" />
     <div>
-      <h1>Gridlock</h1>
+      <h1>Namma Route</h1>
       <span class="tagline">Event-Driven Congestion Forecasting & Resource Recommendation</span>
     </div>
   </div>
@@ -55,9 +55,9 @@
         <div class="stat-detail" id="stat-date-range"></div>
       </div>
       <div class="stat-card" style="--accent-color: var(--accent-emerald)">
-        <div class="stat-label">Event-Driven</div>
+        <div class="stat-label">Special Events</div>
         <div class="stat-value" id="stat-event-driven">—</div>
-        <div class="stat-detail">Theme-relevant events</div>
+        <div class="stat-detail">Protests, VIP movements, construction, etc.</div>
       </div>
       <div class="stat-card" style="--accent-color: var(--severity-high)">
         <div class="stat-label">High Severity</div>
@@ -262,7 +262,7 @@
           </div>
 
           <div class="form-group">
-            <label>Event Description (NLP Context)</label>
+            <label>Event Description</label>
             <textarea id="sim-desc" class="form-control" rows="2" placeholder="E.g., truck broke down blocking left lane..."></textarea>
           </div>
 
@@ -383,7 +383,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=6"></script>
 <script>
   lucide.createIcons();
 </script>

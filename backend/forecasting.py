@@ -19,18 +19,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.metrics import (
     accuracy_score, f1_score, classification_report,
     mean_absolute_error, median_absolute_error, r2_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.neighbors import NearestNeighbors
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 from sklearn.feature_extraction.text import TfidfVectorizer
+from xgboost import XGBClassifier, XGBRegressor
 
 warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -42,9 +43,13 @@ MODEL_DIR = PROCESSED_DIR / "models"
 
 CATEGORICAL_FEATURES = [
     "event_cause", "event_type", "corridor", "zone", 
-    "police_station", "direction", "veh_type"
+    "police_station", "direction", "veh_type", "junction", "time_bin"
 ]
-NUMERICAL_FEATURES = ["hour_of_day", "day_of_week", "is_weekend", "requires_road_closure_int"]
+NUMERICAL_FEATURES = [
+    "hour_of_day", "day_of_week", "is_weekend", "requires_road_closure_int",
+    "is_peak_hour", "is_night", "has_vehicle", "event_span_km",
+    "latitude", "longitude"
+]
 TEXT_FEATURE = "description"
 
 ALL_FEATURES = CATEGORICAL_FEATURES + NUMERICAL_FEATURES + [TEXT_FEATURE]
@@ -54,9 +59,8 @@ EVENT_DRIVEN_CAUSES = ["public_event", "procession", "vip_movement", "protest", 
 
 # ─── Data Preparation ────────────────────────────────────────────────────────
 
-def load_and_prepare_data() -> pd.DataFrame:
-    df = pd.read_csv(CLEAN_CSV)
-    
+def _base_prepare(df: pd.DataFrame) -> pd.DataFrame:
+    """Common data preparation steps."""
     df["requires_road_closure_int"] = df["requires_road_closure"].astype(int)
     
     # Fill missing with safe defaults
@@ -65,17 +69,47 @@ def load_and_prepare_data() -> pd.DataFrame:
         
     df[TEXT_FEATURE] = df[TEXT_FEATURE].fillna("").astype(str)
     
-    # Drop rows missing critical numeric features
-    before = len(df)
-    df = df.dropna(subset=["hour_of_day", "day_of_week", "severity_tier", "duration_to_close_min"])
-    after = len(df)
-    if before != after:
-        print(f"[DATA] Dropped {before - after} rows with missing numeric targets/features")
+    # Fill new numeric features with defaults
+    df["is_peak_hour"] = df["is_peak_hour"].fillna(0).astype(int)
+    df["is_night"] = df["is_night"].fillna(0).astype(int)
+    df["has_vehicle"] = df["has_vehicle"].fillna(0).astype(int)
+    df["event_span_km"] = df["event_span_km"].fillna(0.0).astype(float)
+    df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce").fillna(12.97)
+    df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce").fillna(77.59)
     
     df["hour_of_day"] = df["hour_of_day"].astype(int)
     df["day_of_week"] = df["day_of_week"].astype(int)
     
-    print(f"[DATA] Prepared {len(df)} rows with {len(ALL_FEATURES)} features")
+    return df
+
+def load_full_data() -> pd.DataFrame:
+    """Load ALL rows for severity classification (does not require duration)."""
+    df = pd.read_csv(CLEAN_CSV)
+    df = _base_prepare(df)
+    
+    # Only drop rows missing severity target and core features
+    before = len(df)
+    df = df.dropna(subset=["hour_of_day", "day_of_week", "severity_tier"])
+    after = len(df)
+    if before != after:
+        print(f"[DATA] Dropped {before - after} rows with missing severity/features")
+    
+    print(f"[DATA] Full dataset: {len(df)} rows with {len(ALL_FEATURES)} features")
+    return df
+
+def load_and_prepare_data() -> pd.DataFrame:
+    """Load rows that have BOTH severity AND duration (for duration regressor + k-NN)."""
+    df = pd.read_csv(CLEAN_CSV)
+    df = _base_prepare(df)
+    
+    # Drop rows missing critical numeric features including duration
+    before = len(df)
+    df = df.dropna(subset=["hour_of_day", "day_of_week", "severity_tier", "duration_to_close_min"])
+    after = len(df)
+    if before != after:
+        print(f"[DATA] Dropped {before - after} rows with missing duration/features")
+    
+    print(f"[DATA] Duration dataset: {len(df)} rows with {len(ALL_FEATURES)} features")
     return df
 
 def build_preprocessor():
@@ -84,7 +118,7 @@ def build_preprocessor():
         transformers=[
             ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), CATEGORICAL_FEATURES),
             ("num", StandardScaler(), NUMERICAL_FEATURES),
-            ("text", TfidfVectorizer(max_features=300, min_df=2, stop_words="english"), TEXT_FEATURE)
+            ("text", TfidfVectorizer(max_features=500, ngram_range=(1, 2), min_df=2, stop_words="english"), TEXT_FEATURE)
         ],
         remainder="drop"
     )
@@ -94,7 +128,7 @@ def build_preprocessor():
 
 def train_severity_classifier(df: pd.DataFrame) -> dict:
     print("\n" + "=" * 60)
-    print("TRAINING: Severity Classifier (High/Low)")
+    print("TRAINING: Severity Classifier (High/Low) — XGBoost")
     print("=" * 60)
     
     # Drop 'corridor' from training to prevent data leakage, as it administratively dictates Priority
@@ -106,8 +140,14 @@ def train_severity_classifier(df: pd.DataFrame) -> dict:
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     
+    class_counts = dict(zip(le.classes_, np.bincount(y_encoded)))
     print(f"  Classes: {list(le.classes_)}")
-    print(f"  Class distribution: {dict(zip(le.classes_, np.bincount(y_encoded)))}")
+    print(f"  Class distribution: {class_counts}")
+    
+    # Compute scale_pos_weight for class balancing
+    n_low = class_counts.get("Low", 1)
+    n_high = class_counts.get("High", 1)
+    spw = n_low / n_high if n_high > n_low else n_high / n_low
     
     X_train, X_test, y_train, y_test = train_test_split(
         X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
@@ -119,16 +159,20 @@ def train_severity_classifier(df: pd.DataFrame) -> dict:
         transformers=[
             ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_features_sev),
             ("num", StandardScaler(), NUMERICAL_FEATURES),
-            ("text", TfidfVectorizer(max_features=300, min_df=2, stop_words="english"), TEXT_FEATURE)
+            ("text", TfidfVectorizer(max_features=500, ngram_range=(1, 2), min_df=2, stop_words="english"), TEXT_FEATURE)
         ],
         remainder="drop"
     )
     
     clf = Pipeline([
         ("preprocessor", preprocessor_sev),
-        ("classifier", GradientBoostingClassifier(
-            n_estimators=200, max_depth=5, learning_rate=0.1, 
-            min_samples_leaf=5, subsample=0.8, random_state=42
+        ("classifier", XGBClassifier(
+            n_estimators=300, max_depth=6, learning_rate=0.05,
+            colsample_bytree=0.8, subsample=0.8,
+            reg_alpha=0.1, reg_lambda=1.0,
+            min_child_weight=5, scale_pos_weight=spw,
+            eval_metric="logloss", random_state=42,
+            n_jobs=-1, verbosity=0
         ))
     ])
     
@@ -143,10 +187,21 @@ def train_severity_classifier(df: pd.DataFrame) -> dict:
     print(f"  F1 (weighted): {f1_weighted:.4f}")
     print(classification_report(y_test, y_pred, target_names=le.classes_, digits=3))
     
+    # 5-Fold Stratified Cross-Validation for reliable estimate
+    print("  --- 5-Fold Stratified Cross-Validation ---")
+    from sklearn.base import clone
+    cv_pipeline = clone(clf)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = cross_val_score(cv_pipeline, X, y_encoded, cv=cv, scoring="accuracy", n_jobs=-1)
+    print(f"  CV Accuracy: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+    print(f"  Per-fold:    {[round(s, 4) for s in cv_scores]}")
+    
     metrics = {
-        "model": "GradientBoostingClassifier",
+        "model": "XGBClassifier",
         "accuracy": round(accuracy, 4),
         "f1_weighted": round(f1_weighted, 4),
+        "cv_accuracy_mean": round(cv_scores.mean(), 4),
+        "cv_accuracy_std": round(cv_scores.std(), 4),
         "train_size": len(X_train),
         "test_size": len(X_test),
         "classes": list(le.classes_),
@@ -158,7 +213,7 @@ def train_severity_classifier(df: pd.DataFrame) -> dict:
 
 def train_duration_regressor(df: pd.DataFrame) -> dict:
     print("\n" + "=" * 60)
-    print("TRAINING: Duration-to-Clear Regressor")
+    print("TRAINING: Duration-to-Clear Regressor — XGBoost")
     print("=" * 60)
     
     X = df[ALL_FEATURES].copy()
@@ -174,9 +229,12 @@ def train_duration_regressor(df: pd.DataFrame) -> dict:
     preprocessor = build_preprocessor()
     reg = Pipeline([
         ("preprocessor", preprocessor),
-        ("regressor", GradientBoostingRegressor(
-            n_estimators=200, max_depth=5, learning_rate=0.1, 
-            min_samples_leaf=5, subsample=0.8, random_state=42
+        ("regressor", XGBRegressor(
+            n_estimators=300, max_depth=6, learning_rate=0.05,
+            colsample_bytree=0.8, subsample=0.8,
+            reg_alpha=0.5, reg_lambda=1.5,
+            min_child_weight=5, random_state=42,
+            n_jobs=-1, verbosity=0
         ))
     ])
     
@@ -194,7 +252,7 @@ def train_duration_regressor(df: pd.DataFrame) -> dict:
     print(f"  R² Score:       {r2:.4f}")
     
     metrics = {
-        "model": "GradientBoostingRegressor",
+        "model": "XGBRegressor",
         "mae_min": round(mae, 1),
         "median_ae_min": round(medae, 1),
         "r2_score": round(r2, 4),
@@ -256,6 +314,30 @@ class ForecastingEngine:
         input_df["day_of_week"] = int(event_input.get("day_of_week", 2))
         input_df["is_weekend"] = int(event_input.get("is_weekend", 0))
         input_df[TEXT_FEATURE] = str(event_input.get(TEXT_FEATURE, ""))
+        
+        # Compute derived features
+        hour = int(input_df["hour_of_day"].iloc[0])
+        input_df["is_peak_hour"] = int(hour in [7, 8, 9, 10, 17, 18, 19, 20])
+        input_df["is_night"] = int(hour in [22, 23, 0, 1, 2, 3, 4, 5])
+        veh = str(event_input.get("veh_type", "none")).lower()
+        input_df["has_vehicle"] = int(veh != "none" and veh != "")
+        input_df["event_span_km"] = 0.0  # Not available at forecast time
+        input_df["latitude"] = float(event_input.get("latitude", 12.97))  # Default: Bengaluru center
+        input_df["longitude"] = float(event_input.get("longitude", 77.59))
+        
+        # Time bin
+        if 5 <= hour < 7:
+            input_df["time_bin"] = "early_morning"
+        elif 7 <= hour < 11:
+            input_df["time_bin"] = "morning_rush"
+        elif 11 <= hour < 16:
+            input_df["time_bin"] = "midday"
+        elif 16 <= hour < 21:
+            input_df["time_bin"] = "evening_rush"
+        elif 21 <= hour < 23:
+            input_df["time_bin"] = "night"
+        else:
+            input_df["time_bin"] = "late_night"
         
         result = {}
         
@@ -353,11 +435,14 @@ def run_training_pipeline():
     print("PHASE 9: ML Model Training Pipeline (Real Data + NLP)")
     print("=" * 70)
     
-    df = load_and_prepare_data()
+    # Use FULL dataset for severity (doesn't need duration)
+    df_full = load_full_data()
+    sev_result = train_severity_classifier(df_full)
     
-    sev_result = train_severity_classifier(df)
-    dur_result = train_duration_regressor(df)
-    knn_result = build_knn_analog_index(df)
+    # Use duration-filtered dataset for regressor and k-NN
+    df_dur = load_and_prepare_data()
+    dur_result = train_duration_regressor(df_dur)
+    knn_result = build_knn_analog_index(df_dur)
     
     engine = ForecastingEngine(sev_result, dur_result, knn_result)
     save_models(engine, sev_result, dur_result)

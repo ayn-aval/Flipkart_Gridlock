@@ -100,6 +100,28 @@ def engineer_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
     df["month"] = start_ist.dt.month
     
+    # Advanced time features
+    df["is_peak_hour"] = df["hour_of_day"].isin([7, 8, 9, 10, 17, 18, 19, 20]).astype(int)
+    df["is_night"] = df["hour_of_day"].isin([22, 23, 0, 1, 2, 3, 4, 5]).astype(int)
+    
+    # Time bin — categorical grouping of hour
+    def _time_bin(h):
+        if 5 <= h < 7:
+            return "early_morning"
+        elif 7 <= h < 11:
+            return "morning_rush"
+        elif 11 <= h < 16:
+            return "midday"
+        elif 16 <= h < 21:
+            return "evening_rush"
+        elif 21 <= h < 23:
+            return "night"
+        else:
+            return "late_night"
+    
+    df["time_bin"] = df["hour_of_day"].apply(_time_bin)
+    
+    print(f"[FEAT] Time features: hour, day, weekend, month, is_peak_hour, is_night, time_bin")
     return df
 
 def engineer_duration_feature(df: pd.DataFrame) -> pd.DataFrame:
@@ -110,12 +132,14 @@ def engineer_duration_feature(df: pd.DataFrame) -> pd.DataFrame:
     
     duration = (end_time - df["start_datetime"]).dt.total_seconds() / 60
     
-    MAX_DURATION_MIN = 10080  # 7 days
+    # Cap at 24 hours (1440 min) instead of 7 days — removes extreme outliers
+    # that destroy regression accuracy. P95 of data is ~1440 min.
+    MAX_DURATION_MIN = 1440  # 24 hours
     valid_mask = (duration > 0) & (duration <= MAX_DURATION_MIN)
     df["duration_to_close_min"] = np.where(valid_mask, duration, np.nan)
     
     valid_count = df["duration_to_close_min"].notna().sum()
-    print(f"[FEAT] duration_to_close_min: {valid_count} valid values")
+    print(f"[FEAT] duration_to_close_min: {valid_count} valid values (capped at {MAX_DURATION_MIN} min)")
     
     return df
 
@@ -123,6 +147,33 @@ def engineer_severity_tier(df: pd.DataFrame) -> pd.DataFrame:
     """Map priority directly to severity_tier as requested."""
     df = df.copy()
     df["severity_tier"] = df["priority"]
+    return df
+
+def engineer_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add additional features for improved model accuracy."""
+    df = df.copy()
+    
+    # Junction — carry forward from raw data
+    if "junction" not in df.columns:
+        df["junction"] = "unknown"
+    df["junction"] = df["junction"].fillna("unknown").astype(str)
+    
+    # has_vehicle — binary flag for whether a vehicle type is specified
+    df["has_vehicle"] = (df["veh_type"].fillna("none").str.lower() != "none").astype(int)
+    
+    # event_span_km — distance between start and end coordinates (how much road is blocked)
+    if "endlatitude" in df.columns and "endlongitude" in df.columns:
+        dlat = df["endlatitude"].fillna(0) - df["latitude"].fillna(0)
+        dlon = df["endlongitude"].fillna(0) - df["longitude"].fillna(0)
+        # Approximate km using Haversine shortcut at Bengaluru latitude (~12.97°N)
+        df["event_span_km"] = np.sqrt((dlat * 111.32)**2 + (dlon * 111.32 * np.cos(np.radians(12.97)))**2)
+        # Cap at reasonable maximum (most events are point events)
+        df.loc[df["event_span_km"] > 10, "event_span_km"] = 0.0
+        df["event_span_km"] = df["event_span_km"].fillna(0.0)
+    else:
+        df["event_span_km"] = 0.0
+    
+    print(f"[FEAT] Advanced features: junction, has_vehicle, event_span_km")
     return df
 
 # ─── Step 3: Corridor Centroids & Adjacency ─────────────────────────────────
@@ -143,8 +194,9 @@ def select_columns(df: pd.DataFrame) -> pd.DataFrame:
     keep_cols = [
         "id", "event_type", "event_cause", "status",
         "latitude", "longitude", 
-        "corridor", "zone", "police_station", "direction",
+        "corridor", "zone", "police_station", "direction", "junction",
         "start_datetime", "hour_of_day", "day_of_week", "is_weekend", "month",
+        "is_peak_hour", "is_night", "time_bin", "has_vehicle", "event_span_km",
         "requires_road_closure", "priority", "severity_tier", "veh_type",
         "description", "duration_to_close_min"
     ]
@@ -178,6 +230,7 @@ def run_pipeline():
     df = engineer_time_features(df)
     df = engineer_duration_feature(df)
     df = engineer_severity_tier(df)
+    df = engineer_advanced_features(df)
     
     print("\n--- Corridor Geography ---")
     compute_corridor_centroids(df)

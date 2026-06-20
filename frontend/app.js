@@ -111,8 +111,17 @@ async function loadOverview() {
   document.getElementById('stat-accuracy').textContent = acc != null ? acc.toFixed(1) + '%' : '—';
 
   if (summary.date_range.min && summary.date_range.max) {
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+    
     document.getElementById('stat-date-range').textContent =
-      `${summary.date_range.min} → ${summary.date_range.max}`;
+      `${formatDate(summary.date_range.min)} → ${formatDate(summary.date_range.max)}`;
   }
 
   // Chart: Events by Cause
@@ -502,6 +511,32 @@ async function loadCorridorDropdowns() {
 
 // ─── Simulation ──────────────────────────────────────────────────────────────
 
+// Add dynamic "specify other" inputs
+document.getElementById('sim-form').addEventListener('change', (e) => {
+  if (e.target.tagName === 'SELECT') {
+    const isOther = e.target.value.toLowerCase() === 'others';
+    let specifyInput = e.target.parentNode.querySelector('.specify-other');
+    
+    if (isOther) {
+      if (!specifyInput) {
+        specifyInput = document.createElement('input');
+        specifyInput.type = 'text';
+        specifyInput.className = 'form-control specify-other';
+        specifyInput.style.marginTop = '8px';
+        specifyInput.placeholder = 'Please specify...';
+        specifyInput.dataset.forSelect = e.target.id;
+        e.target.parentNode.appendChild(specifyInput);
+      }
+      specifyInput.style.display = 'block';
+      specifyInput.required = true;
+    } else if (specifyInput) {
+      specifyInput.style.display = 'none';
+      specifyInput.required = false;
+      specifyInput.value = '';
+    }
+  }
+});
+
 async function runSimulation(e) {
   e.preventDefault();
 
@@ -516,19 +551,45 @@ async function runSimulation(e) {
     if (ampm === 'PM' && hourVal < 12) hourVal += 12;
     if (ampm === 'AM' && hourVal === 12) hourVal = 0;
 
+    // Helper to get value, prioritizing the "specify other" input if applicable
+    const getVal = (id) => {
+      const selectVal = document.getElementById(id).value;
+      if (selectVal.toLowerCase() === 'others') {
+        const specifyInput = document.querySelector(`.specify-other[data-for-select="${id}"]`);
+        if (specifyInput && specifyInput.value.trim() !== '') {
+          return specifyInput.value.trim().toLowerCase();
+        }
+      }
+      return selectVal;
+    };
+
+    let description = document.getElementById('sim-desc').value;
+    
+    // Also append the custom inputs to the NLP description so the model can learn from it immediately
+    let customInputs = [];
+    document.querySelectorAll('#sim-form .specify-other').forEach(input => {
+      if (input.style.display !== 'none' && input.value.trim()) {
+        customInputs.push(input.value.trim());
+      }
+    });
+    if (customInputs.length > 0) {
+      description += description ? ' | ' : '';
+      description += 'Custom params: ' + customInputs.join(', ');
+    }
+
     const payload = {
-      event_cause: document.getElementById('sim-cause').value,
-      event_type: document.getElementById('sim-type').value,
-      corridor: document.getElementById('sim-corridor').value,
-      zone: document.getElementById('sim-zone').value,
-      police_station: document.getElementById('sim-station').value,
+      event_cause: getVal('sim-cause'),
+      event_type: getVal('sim-type'),
+      corridor: getVal('sim-corridor'),
+      zone: getVal('sim-zone'),
+      police_station: getVal('sim-station'),
       direction: "Unknown",
       hour_of_day: hourVal,
       day_of_week: parseInt(document.getElementById('sim-day').value),
       is_weekend: parseInt(document.getElementById('sim-weekend').value),
       requires_road_closure: parseInt(document.getElementById('sim-closure').value),
-      veh_type: document.getElementById('sim-veh').value,
-      description: document.getElementById('sim-desc').value,
+      veh_type: getVal('sim-veh'),
+      description: description,
     };
 
     const result = await apiFetch('/forecast', {
@@ -589,16 +650,20 @@ function renderForecastResults(result) {
   `).join('');
 
   // Build similar events HTML
-  const similarHtml = f.similar_past_events.slice(0, 5).map(e => `
+  const similarHtml = f.similar_past_events.slice(0, 5).map(e => {
+    let eHrs = Math.floor(e.duration_min / 60);
+    let eMins = Math.round(e.duration_min % 60);
+    let eDurationDisplay = eHrs > 0 ? `${eHrs}h ${eMins}m` : `${eMins}m`;
+    return `
     <div class="similar-event">
       <div>
         <span class="cause-tag">${e.event_cause.replace(/_/g, ' ')}</span>
         <span class="text-muted" style="margin-left:6px">${e.corridor}</span>
       </div>
-      <span class="duration">${e.duration_min}m</span>
+      <span class="duration">${eDurationDisplay}</span>
       <span class="similarity">${Math.round(e.similarity_score * 100)}%</span>
     </div>
-  `).join('');
+  `}).join('');
 
   container.innerHTML = `
     <!-- Severity & Duration -->
@@ -620,6 +685,7 @@ function renderForecastResults(result) {
         <div class="metric-item">
           <span class="metric-label">Expected Clearance Time</span>
           <span class="metric-value text-amber">${durationDisplay}</span>
+          <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Estimated time until the incident is fully resolved and traffic flow is restored.</div>
         </div>
         <div class="metric-item">
           <span class="metric-label">Severity Probabilities</span>
@@ -714,12 +780,17 @@ async function loadAnalytics() {
     const eda = await apiFetch('/eda');
     const gallery = document.getElementById('eda-gallery');
     gallery.innerHTML = eda.charts.map(chart => `
-      <div style="background: var(--bg-glass); border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle);">
+      <div style="background: var(--bg-glass); border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle); display: flex; flex-direction: column;">
         <img src="${API_BASE}${chart.url}" alt="${chart.title}" 
-             style="width: 100%; display: block; border-radius: var(--radius-sm);" 
+             style="width: 100%; display: block; border-radius: var(--radius-sm) var(--radius-sm) 0 0;" 
              loading="lazy" />
-        <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-secondary);">
-          ${chart.title}
+        <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+          <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
+            ${chart.title}
+          </span>
+          <a href="${API_BASE}${chart.url}" download="${chart.title}.png" target="_blank" style="padding: 6px; border: 1px solid var(--border-subtle); border-radius: 4px; text-decoration: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; background: var(--bg-card); transition: background 0.2s;" title="Export Chart" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background='var(--bg-card)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </a>
         </div>
       </div>
     `).join('');
