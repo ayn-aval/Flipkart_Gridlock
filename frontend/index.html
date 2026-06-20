@@ -195,9 +195,31 @@
           </div>
 
           <div class="form-row">
-            <div class="form-group">
-              <label>Hour of Day (IST)</label>
-              <input type="number" id="sim-hour" min="0" max="23" value="9" />
+            <div class="form-group" style="display: flex; gap: 8px;">
+              <div style="flex: 1;">
+                <label>Time</label>
+                <select id="sim-hour" required>
+                  <option value="12">12</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9" selected>9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label>AM/PM</label>
+                <select id="sim-ampm" required>
+                  <option value="AM" selected>AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
               <label>Day of Week</label>

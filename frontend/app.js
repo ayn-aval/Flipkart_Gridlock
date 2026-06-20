@@ -511,6 +511,11 @@ async function runSimulation(e) {
   if (window.lucide) lucide.createIcons();
 
   try {
+    let hourVal = parseInt(document.getElementById('sim-hour').value);
+    const ampm = document.getElementById('sim-ampm').value;
+    if (ampm === 'PM' && hourVal < 12) hourVal += 12;
+    if (ampm === 'AM' && hourVal === 12) hourVal = 0;
+
     const payload = {
       event_cause: document.getElementById('sim-cause').value,
       event_type: document.getElementById('sim-type').value,
@@ -518,7 +523,7 @@ async function runSimulation(e) {
       zone: document.getElementById('sim-zone').value,
       police_station: document.getElementById('sim-station').value,
       direction: "Unknown",
-      hour_of_day: parseInt(document.getElementById('sim-hour').value),
+      hour_of_day: hourVal,
       day_of_week: parseInt(document.getElementById('sim-day').value),
       is_weekend: parseInt(document.getElementById('sim-weekend').value),
       requires_road_closure: parseInt(document.getElementById('sim-closure').value),
@@ -613,7 +618,7 @@ function renderForecastResults(result) {
       <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Confidence: ${confidencePct}%</div>
       <div class="metric-grid" style="margin-top: 16px;">
         <div class="metric-item">
-          <span class="metric-label">Expected Duration</span>
+          <span class="metric-label">Expected Clearance Time</span>
           <span class="metric-value text-amber">${durationDisplay}</span>
         </div>
         <div class="metric-item">

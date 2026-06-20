@@ -638,7 +638,7 @@ class DiversionEngine:
                 continue
             
             # Build rationale
-            rationale_parts = [f"Nearest parallel corridor ({distance:.1f} km by centroid distance)"]
+            rationale_parts = [f"Nearest alternate route (approx. {distance:.1f} km away)"]
             
             # Check if the alternate has lower event frequency at this hour
             if hour_of_day is not None:
