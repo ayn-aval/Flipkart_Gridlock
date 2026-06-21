@@ -27,9 +27,14 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById(panelId).classList.add('active');
 
     // Lazy-init map when first shown
-    if (tab.dataset.tab === 'map' && !mapInitialized) {
-      initMap();
-      mapInitialized = true;
+    if (tab.dataset.tab === 'map') {
+      if (!mapInitialized) {
+        initMap();
+        mapInitialized = true;
+      } else {
+        // Force Mappls canvas to recalculate its size after the container is visible
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+      }
     }
 
     // Handle learning loop polling
