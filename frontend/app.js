@@ -619,7 +619,7 @@ async function loadCorridorDropdowns() {
   
   const vehOptions = summary.veh_types.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
   const vehEl = document.getElementById('sim-veh');
-  vehEl.innerHTML = `<option value="All" selected>All / Any</option>` + vehOptions;
+  vehEl.innerHTML = `<option value="none" selected>None / N/A</option>` + vehOptions;
 }
 
 
@@ -647,6 +647,20 @@ document.getElementById('sim-form').addEventListener('change', (e) => {
       specifyInput.style.display = 'none';
       specifyInput.required = false;
       specifyInput.value = '';
+    }
+  }
+
+  // Toggle Involved Vehicle dropdown
+  if (e.target.id === 'sim-cause') {
+    const cause = e.target.value;
+    const vehGroup = document.getElementById('sim-veh-group');
+    if (vehGroup) {
+      if (cause === 'vehicle_breakdown' || cause === 'accident' || cause === 'others') {
+        vehGroup.style.display = 'block';
+      } else {
+        vehGroup.style.display = 'none';
+        document.getElementById('sim-veh').value = 'none';
+      }
     }
   }
 });
