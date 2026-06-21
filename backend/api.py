@@ -171,7 +171,7 @@ def get_events(
     is_event_driven: Optional[int] = Query(None, description="1 = event-driven causes only"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    limit: int = Query(100, ge=1, le=5000, description="Max results to return"),
+    limit: int = Query(100, ge=1, le=10000, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
 ):
     """Query historical events with optional filters.
@@ -316,7 +316,7 @@ def get_hotspots_geo(
     event_cause: Optional[str] = Query(None, description="Filter by cause"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
     corridor: Optional[str] = Query(None, description="Filter by corridor"),
-    limit: int = Query(2000, ge=1, le=8200, description="Max points"),
+    limit: int = Query(2000, ge=1, le=20000, description="Max points"),
 ):
     """Return individual event points for map markers/clustering."""
     df = events_df.copy()

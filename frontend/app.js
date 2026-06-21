@@ -101,7 +101,8 @@ async function init() {
     setInterval(pollAlerts, 3000);
     
   } catch (e) {
-    document.getElementById('api-status').textContent = 'API Offline';
+    fetch('/health?error=' + encodeURIComponent(e.stack || e.message)).catch(()=>console.log("log failed"));
+    document.getElementById('api-status').innerHTML = '<span class="status-indicator status-offline"></span> API Connection Error';
     document.querySelector('.status-dot').style.background = '#ef4444';
     console.error('Init failed:', e);
   }
@@ -153,7 +154,7 @@ async function loadOverview() {
   });
 
   // Load hourly distribution
-  const events = await apiFetch('/events?limit=5000');
+  const events = await apiFetch('/events?limit=10000');
   const hourCounts = new Array(24).fill(0);
   events.events.forEach(e => {
     if (e.hour_of_day != null) hourCounts[Math.round(e.hour_of_day)]++;
@@ -534,7 +535,9 @@ async function refreshMap() {
     const data = await apiFetch(url);
 
     // Remove existing markers
-    currentMarkers.forEach(m => mappls.remove({map: map, layer: m}));
+    if (currentMarkers && currentMarkers.length > 0) {
+      currentMarkers.forEach(m => mappls.remove({map: map, layer: m}));
+    }
     currentMarkers = [];
 
     // Add new markers
@@ -543,6 +546,7 @@ async function refreshMap() {
     });
 
     btn.innerHTML = `<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> ${data.count} events`;
+    btn.title = "Displaying up to 5,000 events to maintain browser performance";
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     btn.innerHTML = '<i data-lucide="x-circle" style="width:16px;height:16px;"></i> Error';
@@ -881,7 +885,7 @@ async function loadAnalytics() {
   });
 
   // Road closure rate by cause
-  const events = await apiFetch('/events?limit=5000');
+  const events = await apiFetch('/events?limit=10000');
   const causeCounts = {};
   const causeClosures = {};
   events.events.forEach(e => {
