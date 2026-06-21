@@ -226,8 +226,15 @@ def get_events_summary():
     df = events_df
 
     station_to_zone = {}
-    if "police_station" in df.columns and "zone" in df.columns:
-        station_to_zone = df.dropna(subset=["police_station", "zone"]).drop_duplicates(subset=["police_station"]).set_index("police_station")["zone"].to_dict()
+    station_to_top_corridor = {}
+    if "police_station" in df.columns:
+        if "zone" in df.columns:
+            valid_zones = df[df["zone"] != "Unknown"].dropna(subset=["police_station", "zone"])
+            station_to_zone = valid_zones.drop_duplicates(subset=["police_station"]).set_index("police_station")["zone"].to_dict()
+        if "corridor" in df.columns:
+            valid_corrs = df[~df["corridor"].isin(["Unknown", "Non-corridor"])].dropna(subset=["police_station", "corridor"])
+            st_corr = valid_corrs.groupby("police_station")["corridor"].apply(lambda x: x.mode()[0] if not x.mode().empty else None).to_dict()
+            station_to_top_corridor = {k: v for k, v in st_corr.items() if v is not None}
 
     return {
         "total_events": len(df),
@@ -240,6 +247,7 @@ def get_events_summary():
         "zones": sorted(df["zone"].dropna().unique().tolist()),
         "police_stations": sorted(df["police_station"].dropna().unique().tolist()),
         "station_to_zone": station_to_zone,
+        "station_to_top_corridor": station_to_top_corridor,
         "directions": sorted(df["direction"].dropna().unique().tolist()),
         "event_causes": sorted(df["event_cause"].unique().tolist()),
         "event_types": sorted(df["event_type"].unique().tolist()),

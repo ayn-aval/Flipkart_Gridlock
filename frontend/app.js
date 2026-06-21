@@ -590,11 +590,25 @@ async function loadCorridorDropdowns() {
 
   const stationSelect = document.getElementById('sim-station');
   const zoneSelect = document.getElementById('sim-zone');
+  const corridorSelect = document.getElementById('sim-corridor');
+  const zoneFeedback = document.getElementById('sim-zone-feedback');
+  const corridorFeedback = document.getElementById('sim-corridor-feedback');
+  
   if (stationSelect && zoneSelect && summary.station_to_zone) {
     stationSelect.addEventListener('change', (e) => {
       const selectedStation = e.target.value;
-      if (selectedStation && summary.station_to_zone[selectedStation]) {
-        zoneSelect.value = summary.station_to_zone[selectedStation];
+      if (selectedStation) {
+        if (summary.station_to_zone[selectedStation]) {
+          zoneSelect.value = summary.station_to_zone[selectedStation];
+          if (zoneFeedback) zoneFeedback.style.display = 'block';
+        }
+        if (summary.station_to_top_corridor && summary.station_to_top_corridor[selectedStation]) {
+          corridorSelect.value = summary.station_to_top_corridor[selectedStation];
+          if (corridorFeedback) corridorFeedback.style.display = 'block';
+        }
+      } else {
+        if (zoneFeedback) zoneFeedback.style.display = 'none';
+        if (corridorFeedback) corridorFeedback.style.display = 'none';
       }
     });
   }
@@ -682,7 +696,7 @@ async function runSimulation(e) {
       direction: "Unknown",
       hour_of_day: hourVal,
       day_of_week: parseInt(document.getElementById('sim-day').value),
-      is_weekend: parseInt(document.getElementById('sim-weekend').value),
+      is_weekend: (parseInt(document.getElementById('sim-day').value) >= 5) ? 1 : 0,
       requires_road_closure: parseInt(document.getElementById('sim-closure').value),
       veh_type: getVal('sim-veh'),
       description: description,

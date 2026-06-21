@@ -222,23 +222,27 @@
           <h3 class="card-title"><i data-lucide="zap"></i> Plan Incident Response</h3>
         </div>
         <form class="sim-form" id="sim-form" onsubmit="runSimulation(event)">
-          <div class="form-group">
-            <label>Event Cause</label>
-            <select id="sim-cause" required>
-              <!-- Populated dynamically -->
-            </select>
+          
+          <!-- WHAT -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Event Category</label>
+              <select id="sim-cause" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Specific Incident</label>
+              <select id="sim-type" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
           </div>
 
+          <!-- WHERE -->
           <div class="form-group">
-            <label>Event Type</label>
-            <select id="sim-type" required>
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Corridor</label>
-            <select id="sim-corridor">
+            <label>Police Station</label>
+            <select id="sim-station">
               <!-- Populated dynamically -->
             </select>
           </div>
@@ -249,15 +253,34 @@
               <select id="sim-zone">
                 <!-- Populated dynamically -->
               </select>
+              <small id="sim-zone-feedback" style="display: none; color: var(--severity-low); margin-top: 4px;"><i data-lucide="check-circle" style="width: 12px; height: 12px; display: inline; vertical-align: middle;"></i> Auto-detected based on station.</small>
             </div>
             <div class="form-group">
-              <label>Police Station</label>
-              <select id="sim-station">
+              <label>Corridor</label>
+              <select id="sim-corridor">
                 <!-- Populated dynamically -->
+              </select>
+              <small id="sim-corridor-feedback" style="display: none; color: var(--accent-cyan); margin-top: 4px;"><i data-lucide="info" style="width: 12px; height: 12px; display: inline; vertical-align: middle;"></i> Auto-selected most likely corridor. Please verify.</small>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Involved Vehicle</label>
+              <select id="sim-veh">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Road Closure Needed?</label>
+              <select id="sim-closure">
+                <option value="0">No</option>
+                <option value="1">Yes</option>
               </select>
             </div>
           </div>
 
+          <!-- WHEN -->
           <div class="form-row">
             <div class="form-group" style="display: flex; gap: 8px;">
               <div style="flex: 1;">
@@ -299,32 +322,7 @@
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Weekend?</label>
-              <select id="sim-weekend">
-                <option value="0">No (Weekday)</option>
-                <option value="1">Yes (Weekend)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Road Closure Needed?</label>
-              <select id="sim-closure">
-                <option value="0">No</option>
-                <option value="1">Yes</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Vehicle Type</label>
-              <select id="sim-veh">
-                <!-- Populated dynamically -->
-              </select>
-            </div>
-          </div>
-
+          <!-- DESCRIPTION -->
           <div class="form-group">
             <label>Event Description</label>
             <textarea id="sim-desc" class="form-control" rows="2" placeholder="E.g., truck broke down blocking left lane..."></textarea>
@@ -548,7 +546,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=9"></script>
+<script src="/static/app.js?v=11"></script>
 <script>
   lucide.createIcons();
 </script>
