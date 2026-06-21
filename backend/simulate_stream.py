@@ -43,7 +43,84 @@ def run_simulation(df):
 
     try:
         while True:
-            # 1. Sample a random event
+            # ────────────────────────────────────────────────────────
+            # 1. Autonomous CCTV AI Loop (20% chance per cycle)
+            # ────────────────────────────────────────────────────────
+            cctv_samples_dir = PROJECT_ROOT / "data" / "cctv_samples"
+            if random.random() < 0.20 and cctv_samples_dir.exists():
+                images = list(cctv_samples_dir.glob("*.png")) + list(cctv_samples_dir.glob("*.jpg"))
+                if images:
+                    random_image = random.choice(images)
+                    print(f"📷 [CCTV AUTO-POLL] Analyzing {random_image.name}...")
+                    
+                    try:
+                        with open(random_image, "rb") as f:
+                            files = {"file": (random_image.name, f, "image/jpeg")}
+                            res_cv = requests.post(f"{API_BASE_URL}/vision/analyze", files=files)
+                        
+                        if res_cv.status_code == 200:
+                            cv_data = res_cv.json()
+                            if cv_data["severity"] == "High":
+                                print(f"🚨 [CCTV AI ALERT] {cv_data['status']} detected! Triggering ML Forecaster...")
+                                
+                                # Call XGBoost with a generic payload representing the CCTV detection
+                                cctv_payload = {
+                                    "event_cause": "congestion" if "Congestion" in cv_data["status"] else "accident",
+                                    "event_type": "camera_detection",
+                                    "corridor": "ORR South 1", # Mock location
+                                    "zone": "South",
+                                    "police_station": "Madiwala",
+                                    "direction": "south",
+                                    "hour_of_day": 14,
+                                    "day_of_week": 3,
+                                    "is_weekend": 0,
+                                    "requires_road_closure": 0,
+                                    "veh_type": "none",
+                                    "description": f"AI Auto-detected: {cv_data['status']}. Vehicles: {cv_data['total_vehicles']}"
+                                }
+                                
+                                res_fc = requests.post(f"{API_BASE_URL}/forecast", json=cctv_payload)
+                                if res_fc.status_code == 200:
+                                    fc_data = res_fc.json()["forecast"]
+                                    
+                                    # Save to active alerts JSON
+                                    import json
+                                    from datetime import datetime
+                                    alert_path = PROJECT_ROOT / "data" / "active_alerts.json"
+                                    
+                                    # Generate context-aware recommendations in simple language
+                                    recs = [
+                                        f"Send patrol car from {cctv_payload['police_station']} station immediately.",
+                                        "Update display boards to divert incoming traffic.",
+                                        "Dispatch heavy towing crane." if cv_data["severity"] == "High" else "Monitor live feed for next 15 mins."
+                                    ]
+                                    
+                                    alert_record = {
+                                        "id": f"CCTV-{int(time.time())}",
+                                        "timestamp": datetime.now().isoformat(),
+                                        "cv_status": cv_data["status"],
+                                        "total_vehicles": cv_data["total_vehicles"],
+                                        "predicted_severity": fc_data["severity_tier"],
+                                        "predicted_duration_min": round(fc_data["expected_duration_min"], 1),
+                                        "location": f"{cctv_payload['corridor']} ({cctv_payload['direction'].title()}bound)",
+                                        "recommendations": recs,
+                                        "annotated_image": cv_data["annotated_image"]
+                                    }
+                                    
+                                    # Write as list
+                                    with open(alert_path, "w") as f:
+                                        json.dump([alert_record], f)
+                                        
+                                    print(f"✅ [CCTV PIPELINE] Alert dispatched! Expected clear time: {fc_data['expected_duration_min']:.1f}m\n")
+                    except Exception as e:
+                        print(f"  ❌ CCTV Pipeline Error: {e}")
+
+            # Wait briefly so CCTV logs stand out
+            time.sleep(1)
+
+            # ────────────────────────────────────────────────────────
+            # 2. Historical Event Stream Simulation (Original Logic)
+            # ────────────────────────────────────────────────────────
             event = df.sample(1).iloc[0]
             event_id = event["id"]
             
@@ -121,7 +198,7 @@ def run_simulation(df):
                 print(f"  ❌ Failed to send feedback: {e}\n")
 
             # Wait before next event
-            time.sleep(random.uniform(2.0, 4.0))
+            time.sleep(random.uniform(5.0, 8.0))
 
     except KeyboardInterrupt:
         print("\n🛑 Simulation stopped by user.")

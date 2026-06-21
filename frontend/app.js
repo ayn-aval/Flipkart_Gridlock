@@ -87,6 +87,10 @@ async function init() {
       loadCorridorDropdowns(),
       loadAnalytics(),
     ]);
+
+    // Start background poller for CCTV Autonomous Alerts
+    setInterval(pollAlerts, 3000);
+    
   } catch (e) {
     document.getElementById('api-status').textContent = 'API Offline';
     document.querySelector('.status-dot').style.background = '#ef4444';
@@ -328,6 +332,62 @@ function renderScatterChart(canvasId, { dataPoints }) {
       },
     },
   });
+}
+
+
+// ─── Poll Autonomous Alerts ──────────────────────────────────────────────────
+
+let lastAlertId = null;
+let currentAlertData = null;
+
+async function pollAlerts() {
+  try {
+    const alerts = await apiFetch('/alerts/live');
+    if (alerts && alerts.length > 0) {
+      const latest = alerts[alerts.length - 1]; // get the newest alert
+      
+      // Only show if it's a new alert we haven't seen yet
+      if (latest.id !== lastAlertId) {
+        lastAlertId = latest.id;
+        currentAlertData = latest;
+        
+        // Populate banner
+        document.getElementById('ai-alert-status').textContent = latest.cv_status;
+        document.getElementById('ai-alert-vehicles').textContent = latest.total_vehicles;
+        document.getElementById('ai-alert-severity').textContent = latest.predicted_severity;
+        document.getElementById('ai-alert-duration').textContent = latest.predicted_duration_min;
+        document.getElementById('ai-alert-img').src = latest.annotated_image;
+        if (document.getElementById('ai-alert-location')) {
+          document.getElementById('ai-alert-location').textContent = latest.location || "Unknown Location";
+        }
+        
+        // Show banner
+        document.getElementById('ai-alert-banner').style.display = 'block';
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to poll alerts", e);
+  }
+}
+
+function openAlertModal() {
+  if (!currentAlertData) return;
+  document.getElementById('ai-alert-modal').style.display = 'flex';
+  document.getElementById('modal-location').textContent = currentAlertData.location || "Unknown Location";
+  document.getElementById('modal-severity').textContent = currentAlertData.predicted_severity;
+  document.getElementById('modal-duration').textContent = currentAlertData.predicted_duration_min + ' min';
+  
+  const recsUl = document.getElementById('modal-recommendations');
+  if (currentAlertData.recommendations && currentAlertData.recommendations.length > 0) {
+    recsUl.innerHTML = currentAlertData.recommendations.map(r => `<li style="margin-bottom: 8px;">${r}</li>`).join('');
+  } else {
+    recsUl.innerHTML = '<li>No specific recommendations generated.</li>';
+  }
+}
+
+function closeAlertModal() {
+  document.getElementById('ai-alert-modal').style.display = 'none';
+  document.getElementById('ai-alert-banner').style.display = 'none';
 }
 
 
@@ -805,14 +865,27 @@ async function loadLearningLoop() {
   try {
     const log = await apiFetch('/feedback/log?limit=50');
     
-    if (log.count === 0) return;
+    // Fetch actual trained model metrics alongside the feedback log
+    const modelMetrics = await apiFetch('/models/metrics');
 
-    // Update Stats
-    document.getElementById('stat-mae').textContent = 
-      log.metrics.mae_duration_min !== null ? log.metrics.mae_duration_min.toFixed(1) : '—';
-    document.getElementById('stat-learning-accuracy').textContent = 
-      log.metrics.accuracy_severity_pct !== null ? log.metrics.accuracy_severity_pct.toFixed(1) + '%' : '—';
-    document.getElementById('stat-logged').textContent = log.metrics.total_feedback_events;
+    // Update Stats using the true system model metrics
+    if (!modelMetrics.error) {
+      const totalMins = Math.round(modelMetrics.duration.mae_min);
+      const hours = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      document.getElementById('stat-mae').textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      document.getElementById('stat-learning-accuracy').textContent = (modelMetrics.severity.accuracy * 100).toFixed(1) + '%';
+    } else {
+      // Fallback
+      document.getElementById('stat-mae').textContent = '—';
+      document.getElementById('stat-learning-accuracy').textContent = '—';
+    }
+    
+    // Total logged feedback from the log endpoint
+    document.getElementById('stat-logged').textContent = log.metrics ? log.metrics.total_feedback_events : 0;
+
+    // If no feedback yet, we skip rendering the scatter chart and table
+    if (log.count === 0) return;
 
     // Update Scatter Chart
     const scatterData = log.entries.map(e => ({
@@ -851,6 +924,62 @@ async function loadLearningLoop() {
 document.getElementById('sim-day').addEventListener('change', function () {
   const day = parseInt(this.value);
   document.getElementById('sim-weekend').value = (day >= 5) ? '1' : '0';
+});
+
+
+// ─── CCTV AI Logic ─────────────────────────────────────────────────────────────
+
+document.getElementById('cctv-upload').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const viewer = document.getElementById('cctv-viewer');
+  const img = document.getElementById('cctv-result-img');
+  const placeholder = document.getElementById('cctv-placeholder');
+  const loader = document.getElementById('cctv-loader');
+  
+  placeholder.style.display = 'none';
+  img.style.display = 'none';
+  loader.style.display = 'block';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch('http://localhost:8000/vision/analyze', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) throw new Error("Failed to process image");
+    const result = await response.json();
+    
+    // Update Image
+    img.src = result.annotated_image;
+    loader.style.display = 'none';
+    img.style.display = 'block';
+    
+    // Update Stats
+    document.getElementById('cctv-status').textContent = result.status;
+    document.getElementById('cctv-status').style.color = result.severity === 'High' ? 'var(--accent-orange)' : (result.severity === 'Medium' ? 'var(--accent-yellow)' : 'var(--accent-green)');
+    document.getElementById('cctv-total').textContent = result.total_vehicles;
+    
+    // Update Breakdown
+    const breakdownHtml = Object.entries(result.breakdown).map(([type, count]) => `
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 10px; text-transform: capitalize;">${type}</td>
+        <td style="padding: 10px; text-align: right; font-weight: bold;">${count}</td>
+      </tr>
+    `).join('');
+    
+    document.getElementById('cctv-breakdown-body').innerHTML = breakdownHtml;
+    
+  } catch (error) {
+    console.error(error);
+    alert("Error processing CCTV frame. Make sure the backend server is running.");
+    placeholder.style.display = 'block';
+    loader.style.display = 'none';
+  }
 });
 
 
