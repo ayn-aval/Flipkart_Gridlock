@@ -7,7 +7,7 @@
   <meta name="description" content="Forecast event-related traffic impact and recommend optimal resource deployment for Bengaluru traffic corridors." />
   <!-- MapMyIndia (Mappls) CSS and scripts will be loaded dynamically or don't require external CSS initially -->
   <!-- Dashboard CSS -->
-  <link rel="stylesheet" href="/static/index.css?v=3" />
+  <link rel="stylesheet" href="/static/index.css?v=5" />
 </head>
 <body>
 
@@ -443,74 +443,97 @@
     </div>
     
     <!-- Camera Selection Grid -->
-    <div style="display: flex; gap: 15px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px;">
-      <button class="cam-select-btn" onclick="analyzeJunction('silk_board', 'Silk Board Junction')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
-        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 01 - Southbound</div>
-        <div style="font-weight: 600; font-size: 1.1rem; color: white;">Silk Board Junction</div>
+    <div style="display: flex; gap: 15px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
+      <button class="cam-select-btn" onclick="analyzeJunction('silk_board', 'Silk Board Junction')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 01 - Southbound</div>
+        <div style="font-weight: 600; font-size: 1rem; color: white;">Silk Board Junction</div>
       </button>
-      <button class="cam-select-btn" onclick="analyzeJunction('kr_puram', 'KR Puram Bridge')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
-        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 48 - Eastbound</div>
-        <div style="font-weight: 600; font-size: 1.1rem; color: white;">KR Puram Bridge</div>
+      <button class="cam-select-btn" onclick="analyzeJunction('kr_puram', 'KR Puram Bridge')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 48 - Eastbound</div>
+        <div style="font-weight: 600; font-size: 1rem; color: white;">KR Puram Bridge</div>
       </button>
-      <button class="cam-select-btn" onclick="analyzeJunction('mg_road', 'MG Road Signal')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
-        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 12 - Westbound</div>
-        <div style="font-weight: 600; font-size: 1.1rem; color: white;">MG Road Signal</div>
+      <button class="cam-select-btn" onclick="analyzeJunction('mg_road', 'MG Road Signal')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 12 - Westbound</div>
+        <div style="font-weight: 600; font-size: 1rem; color: white;">MG Road Signal</div>
       </button>
     </div>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-      <!-- Left Column: Camera Feed -->
-      <div class="card" style="min-height: 500px; display: flex; flex-direction: column;">
+    <!-- Main Control Room Grid -->
+    <div style="display: grid; grid-template-columns: 7fr 3fr; gap: 20px;">
+      
+      <!-- Left Column: Video Player -->
+      <div class="card" style="display: flex; flex-direction: column;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="card-title" id="cctv-viewer-title">Select a camera to monitor...</h3>
+          <h3 class="card-title" id="cctv-viewer-title">Select a camera feed above to monitor...</h3>
         </div>
-        
-        <div id="cctv-viewer" style="flex: 1; background: #050505; border-radius: 8px; margin: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; border: 1px solid #333;">
+        <div id="cctv-viewer" style="flex: 1; background: #000; border-radius: 8px; margin: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; border: 1px solid #333; max-height: 450px; aspect-ratio: 16/9;">
           <div id="cctv-placeholder" style="color: #666; text-align: center;">
-            <i data-lucide="monitor" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"></i>
-            <p>Standing by for live feed selection.</p>
+            <i data-lucide="mouse-pointer-click" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"></i>
+            <p>Please click a camera feed above to begin live monitoring.</p>
           </div>
-          <img id="cctv-result-img" src="" alt="Analyzed CCTV Frame" style="display: none; width: 100%; height: 100%; object-fit: cover;" />
+          <img id="cctv-result-img" src="" alt="Analyzed CCTV Frame" style="display: none; width: 100%; height: 100%; object-fit: contain;" />
           <div id="cctv-loader" class="loader" style="display: none; position: absolute;"></div>
-          
           <!-- Live Overlay Badge -->
           <div id="cctv-live-badge" style="display: none; position: absolute; top: 15px; left: 15px; background: rgba(239, 68, 68, 0.8); color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
             <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1s infinite;"></div> LIVE AI
           </div>
         </div>
       </div>
-      
-      <!-- Right Column: AI Insights -->
+
+      <!-- Right Column: AI Assessment & Quick Actions -->
       <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- AI Assessment Stats -->
         <div class="card">
           <div class="card-header">
             <h3 class="card-title"><i data-lucide="cpu"></i> AI Assessment</h3>
           </div>
-          <div style="padding: 20px;">
-            <div style="margin-bottom: 20px;">
-              <div class="stat-label">Status</div>
-              <div class="stat-value" id="cctv-status" style="font-size: 1.5rem;">—</div>
+          <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+              <div class="stat-label"><i data-lucide="activity" style="width:14px;height:14px;"></i> Status</div>
+              <div class="stat-value" id="cctv-status" style="font-size: 1.2rem;">—</div>
             </div>
-            <div style="margin-bottom: 20px;">
-              <div class="stat-label">Total Vehicles</div>
-              <div class="stat-value" id="cctv-total">—</div>
+            <div id="cctv-severity-card" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; border-radius: 4px; padding: 10px; transition: all 0.3s;">
+              <div class="stat-label"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Severity</div>
+              <div class="stat-value" id="cctv-severity" style="font-size: 1.2rem;">—</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div class="stat-label"><i data-lucide="car" style="width:14px;height:14px;"></i> Total Vehicles</div>
+              <div class="stat-value" id="cctv-total" style="font-size: 1.2rem;">—</div>
             </div>
           </div>
         </div>
-        
+
+        <!-- Detection Breakdown -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i data-lucide="list"></i> Detection Breakdown</h3>
+            <h3 class="card-title"><i data-lucide="list"></i> Breakdown</h3>
           </div>
           <div style="padding: 20px;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-              <tbody id="cctv-breakdown-body">
-                <tr><td style="color: var(--text-dim);">No data</td></tr>
-              </tbody>
-            </table>
+            <div id="cctv-breakdown-body" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <div style="color: var(--text-dim);">No data</div>
+            </div>
           </div>
         </div>
+
+        <!-- Quick Actions Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i data-lucide="zap"></i> Quick Actions</h3>
+          </div>
+          <div style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-primary" onclick="alert('Dispatching Patrol Unit to location.')" style="width: 100%; display: flex; justify-content: flex-start; gap: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); color: var(--text-primary);"><i data-lucide="siren" style="color: #ef4444;"></i> Dispatch Patrol Unit</button>
+            <button class="btn" onclick="alert('Adjusting signal timing algorithms for this junction.')" style="width: 100%; display: flex; justify-content: flex-start; gap: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--text-primary);"><i data-lucide="traffic-cone" style="color: #f59e0b;"></i> Adjust Signal Timings</button>
+            <button class="btn" onclick="alert('Incident logged to central database.')" style="width: 100%; display: flex; justify-content: flex-start; gap: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--text-primary);"><i data-lucide="file-text" style="color: #10b981;"></i> Log Incident Report</button>
+          </div>
+        </div>
+
       </div>
+    </div>
+    
+    <!-- Disclaimer -->
+    <div class="cctv-disclaimer" style="justify-content: center; margin-top: 20px; border: none;">
+      Note: Live CCTV junction feeds and subsequent AI analysis are simulated using mock sample images for demonstration purposes.
     </div>
   </section>
 
@@ -525,7 +548,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=6"></script>
+<script src="/static/app.js?v=9"></script>
 <script>
   lucide.createIcons();
 </script>

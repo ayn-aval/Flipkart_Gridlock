@@ -44,6 +44,15 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
         learningPoller = null;
       }
     }
+
+    // Auto-select first CCTV camera
+    if (tab.dataset.tab === 'cctv') {
+      const cctvTitle = document.getElementById('cctv-viewer-title');
+      if (cctvTitle && cctvTitle.textContent === 'Select a camera feed above to monitor...') {
+        const firstCamBtn = document.querySelector('.cam-select-btn');
+        if (firstCamBtn) firstCamBtn.click();
+      }
+    }
   });
 });
 
@@ -999,15 +1008,31 @@ async function analyzeJunction(junctionId, junctionName) {
     
     // Update Stats
     document.getElementById('cctv-status').textContent = result.status;
-    document.getElementById('cctv-status').style.color = result.severity === 'High' ? 'var(--accent-orange)' : (result.severity === 'Medium' ? 'var(--accent-yellow)' : 'var(--accent-green)');
+    document.getElementById('cctv-status').style.color = 'var(--text-primary)';
+    
+    document.getElementById('cctv-severity').textContent = result.severity;
+    const sevCard = document.getElementById('cctv-severity-card');
+    if (result.severity === 'High') {
+      sevCard.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+      sevCard.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.1)';
+      document.getElementById('cctv-severity').style.color = 'var(--severity-high)';
+    } else if (result.severity === 'Medium') {
+      sevCard.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+      sevCard.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.1)';
+      document.getElementById('cctv-severity').style.color = 'var(--severity-medium)';
+    } else {
+      sevCard.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      sevCard.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.1)';
+      document.getElementById('cctv-severity').style.color = 'var(--severity-low)';
+    }
+    
     document.getElementById('cctv-total').textContent = result.total_vehicles;
     
     // Update Breakdown
     const breakdownHtml = Object.entries(result.breakdown).map(([type, count]) => `
-      <tr style="border-bottom: 1px solid var(--border);">
-        <td style="padding: 10px; text-transform: capitalize;">${type}</td>
-        <td style="padding: 10px; text-align: right; font-weight: bold;">${count}</td>
-      </tr>
+      <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 6px 14px; font-weight: 500; text-transform: capitalize; display: flex; align-items: center; gap: 8px;">
+        ${type}: <span style="font-weight: 700; color: var(--accent-cyan);">${count}</span>
+      </div>
     `).join('');
     
     document.getElementById('cctv-breakdown-body').innerHTML = breakdownHtml;
