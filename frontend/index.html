@@ -7,9 +7,71 @@
   <meta name="description" content="Forecast event-related traffic impact and recommend optimal resource deployment for Bengaluru traffic corridors." />
   <!-- MapMyIndia (Mappls) CSS and scripts will be loaded dynamically or don't require external CSS initially -->
   <!-- Dashboard CSS -->
-  <link rel="stylesheet" href="/static/index.css?v=2" />
+  <link rel="stylesheet" href="/static/index.css?v=3" />
 </head>
 <body>
+
+    <!-- Active AI Alert Banner (Hidden by default) -->
+    <div id="ai-alert-banner" class="cctv-alert-floating" onclick="openAlertModal()">
+      <div class="cctv-alert-header" title="Triggered autonomously by YOLOv8 detecting high vehicle density/anomalies on live CCTV feeds.">
+        <i data-lucide="scan-eye"></i> Proactive AI Alert
+      </div>
+      <div class="cctv-alert-body">
+        <div class="cctv-alert-image">
+          <img id="ai-alert-img" src="" alt="CCTV Feed" />
+        </div>
+        <div class="cctv-alert-content">
+          <div class="cctv-alert-title" id="ai-alert-status">Potential Congestion</div>
+          <div class="cctv-alert-detail">
+            <i data-lucide="map-pin" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <strong id="ai-alert-location">--</strong><br/>
+            YOLOv8 Detected: <strong id="ai-alert-vehicles">0</strong> vehicles.
+          </div>
+          <div class="cctv-alert-badge" id="ai-alert-badge">
+            <i data-lucide="clock" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;"></i> <span id="ai-alert-duration">--</span> min | <span id="ai-alert-severity">--</span>
+          </div>
+        </div>
+      </div>
+      <div class="cctv-disclaimer">
+        <i data-lucide="info" style="width:12px;height:12px;"></i> Note: CCTV analysis is currently running on simulated mock image data for demonstration.
+      </div>
+      <button onclick="event.stopPropagation(); document.getElementById('ai-alert-banner').style.display='none'" style="position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-secondary); cursor: pointer;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+
+    <!-- Alert Modal (Hidden by default) -->
+    <div id="ai-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+      <div class="cctv-modal-glass">
+        <div class="cctv-modal-header">
+          <h2 class="cctv-modal-title"><i data-lucide="clipboard-list"></i> Event Assessment Report</h2>
+          <button class="cctv-modal-close" onclick="closeAlertModal()"><i data-lucide="x"></i></button>
+        </div>
+        <div style="padding: 24px;">
+          <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div style="flex: 1; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); padding: 15px; border-radius: 8px; text-align: center;">
+              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Location</div>
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-primary);" id="modal-location">--</div>
+            </div>
+            <div style="flex: 1; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; text-align: center;" id="modal-severity-box">
+              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Severity</div>
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--severity-high);" id="modal-severity">--</div>
+            </div>
+            <div style="flex: 1; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); padding: 15px; border-radius: 8px; text-align: center;">
+              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Expected Clearance</div>
+              <div style="font-weight: 600; font-size: 1.1rem; color: var(--text-primary);" id="modal-duration">-- min</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 24px;">
+            <h3 style="margin-top: 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; margin-bottom: 15px; font-family: 'Outfit'; color: var(--text-primary);"><i data-lucide="check-square" style="vertical-align: text-bottom; width: 18px; color: var(--accent-blue);"></i> Recommended Actions</h3>
+            <ul id="modal-recommendations" style="line-height: 1.6; color: var(--text-secondary); padding-left: 20px;">
+              <li>Loading recommendations...</li>
+            </ul>
+          </div>
+          <button onclick="closeAlertModal()" class="btn btn-primary" style="width: 100%; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);">Acknowledge & Close</button>
+          <div class="cctv-disclaimer" style="justify-content: center; margin-top: 16px; border: none;">
+            Note: This AI assessment relies on mock CCTV data and ML forecasts for demonstration.
+          </div>
+        </div>
+      </div>
+    </div>
 
 <!-- ════════════════════════════════════════════════════════════════════
      HEADER
@@ -48,67 +110,6 @@
   <!-- ─── Overview Tab ──────────────────────────────────────────── -->
   <section class="tab-panel active" id="panel-overview">
 
-    <!-- Active AI Alert Banner (Hidden by default) -->
-    <div id="ai-alert-banner" onclick="openAlertModal()" style="display: none; cursor: pointer; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4); border: 2px solid #fca5a5; position: relative; overflow: hidden; animation: pulse-border 2s infinite; transition: transform 0.2s;">
-      <div style="display: flex; gap: 20px; align-items: center;">
-        <!-- Left: Image -->
-        <div style="flex-shrink: 0; width: 150px; height: 100px; border-radius: 8px; overflow: hidden; background: #000; border: 2px solid white;">
-          <img id="ai-alert-img" src="" style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-        <!-- Right: Text -->
-        <div style="flex-grow: 1;">
-          <h2 style="margin: 0 0 8px 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
-            <i data-lucide="alert-triangle" style="animation: pulse 1s infinite;"></i> PROACTIVE AI ALERT: <span id="ai-alert-status"></span>
-          </h2>
-          <p style="margin: 0 0 12px 0; font-size: 1.1rem; opacity: 0.9;">
-            <i data-lucide="map-pin" style="width:16px;height:16px;display:inline;vertical-align:text-bottom;"></i> <strong id="ai-alert-location">--</strong> | YOLOv8 detected <strong id="ai-alert-vehicles">0</strong> vehicles. XGBoost predicts <strong id="ai-alert-severity">High</strong> severity.
-          </p>
-          <div style="display: inline-block; background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 1.2rem;">
-            ⏱️ Expected Clearance Time: <span id="ai-alert-duration">--</span> min
-          </div>
-          <div style="margin-top: 10px; font-size: 0.9rem; font-weight: 500; opacity: 0.8;">Click to view detailed assessment & recommendations</div>
-        </div>
-        <!-- Dismiss Button -->
-        <button onclick="event.stopPropagation(); document.getElementById('ai-alert-banner').style.display='none'" style="background: none; border: none; color: white; cursor: pointer; position: absolute; top: 15px; right: 15px; opacity: 0.7; transition: opacity 0.2s;">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Alert Modal (Hidden by default) -->
-    <div id="ai-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
-      <div style="background: #0f172a; border-radius: 12px; width: 600px; max-width: 90%; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.8); overflow: hidden;">
-        <div style="background: #ef4444; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-          <h2 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
-            <i data-lucide="alert-triangle"></i> Event Assessment Report
-          </h2>
-          <button onclick="closeAlertModal()" style="background: none; border: none; color: white; cursor: pointer;"><i data-lucide="x"></i></button>
-        </div>
-        <div style="padding: 24px;">
-          <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-            <div style="flex: 1; background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; text-align: center;">
-              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Location</div>
-              <div style="font-weight: 600; font-size: 1.1rem;" id="modal-location">--</div>
-            </div>
-            <div style="flex: 1; background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; text-align: center;">
-              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Severity</div>
-              <div style="font-weight: 600; font-size: 1.1rem; color: #ef4444;" id="modal-severity">--</div>
-            </div>
-            <div style="flex: 1; background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; text-align: center;">
-              <div style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px;">Clearance Time</div>
-              <div style="font-weight: 600; font-size: 1.1rem;" id="modal-duration">-- min</div>
-            </div>
-          </div>
-          <div style="margin-bottom: 20px;">
-            <h3 style="margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;"><i data-lucide="check-square" style="vertical-align: text-bottom; width: 18px; color: var(--accent-blue);"></i> Recommended Actions</h3>
-            <ul id="modal-recommendations" style="line-height: 1.6; color: var(--text-primary); padding-left: 20px;">
-              <li>Loading recommendations...</li>
-            </ul>
-          </div>
-          <button onclick="closeAlertModal()" class="btn btn-primary" style="width: 100%;">Acknowledge & Close</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Stats Cards -->
     <div class="stats-grid" id="stats-grid">
@@ -524,7 +525,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=6"></script>
 <script>
   lucide.createIcons();
 </script>

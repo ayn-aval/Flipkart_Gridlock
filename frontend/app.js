@@ -356,6 +356,10 @@ async function pollAlerts() {
         document.getElementById('ai-alert-vehicles').textContent = latest.total_vehicles;
         document.getElementById('ai-alert-severity').textContent = latest.predicted_severity;
         document.getElementById('ai-alert-duration').textContent = latest.predicted_duration_min;
+        const badge = document.getElementById('ai-alert-badge');
+        if (badge) {
+          badge.className = latest.predicted_severity === 'High' ? 'cctv-alert-badge high-severity' : 'cctv-alert-badge';
+        }
         document.getElementById('ai-alert-img').src = latest.annotated_image;
         if (document.getElementById('ai-alert-location')) {
           document.getElementById('ai-alert-location').textContent = latest.location || "Unknown Location";
@@ -376,6 +380,19 @@ function openAlertModal() {
   document.getElementById('modal-location').textContent = currentAlertData.location || "Unknown Location";
   document.getElementById('modal-severity').textContent = currentAlertData.predicted_severity;
   document.getElementById('modal-duration').textContent = currentAlertData.predicted_duration_min + ' min';
+  
+  const modalSevBox = document.getElementById('modal-severity-box');
+  if (modalSevBox) {
+    if (currentAlertData.predicted_severity === 'High') {
+      modalSevBox.style.background = 'rgba(239, 68, 68, 0.05)';
+      modalSevBox.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+      document.getElementById('modal-severity').style.color = 'var(--severity-high)';
+    } else {
+      modalSevBox.style.background = 'rgba(16, 185, 129, 0.05)';
+      modalSevBox.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+      document.getElementById('modal-severity').style.color = 'var(--severity-low)';
+    }
+  }
   
   const recsUl = document.getElementById('modal-recommendations');
   if (currentAlertData.recommendations && currentAlertData.recommendations.length > 0) {

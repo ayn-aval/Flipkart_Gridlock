@@ -800,3 +800,150 @@ select {
 .text-cyan { color: var(--accent-cyan); }
 .text-blue { color: var(--accent-blue); }
 .text-rose { color: var(--accent-pink); }
+
+/* ─── CCTV AI Alert Redesign ───────────────────────────────────────── */
+.cctv-alert-floating {
+  display: none;
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 450px;
+  max-width: calc(100vw - 48px);
+  z-index: 9999;
+  background: var(--bg-surface);
+  backdrop-filter: var(--blur-medium);
+  -webkit-backdrop-filter: var(--blur-medium);
+  border: 1px solid var(--border-active);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.2);
+  padding: 16px;
+  cursor: pointer;
+  animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1), pulse-glow-cyan 3s infinite alternate;
+  color: var(--text-primary);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.cctv-alert-floating:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 45px rgba(0, 0, 0, 0.6), 0 0 30px rgba(6, 182, 212, 0.4);
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-glow-cyan {
+  from { border-color: rgba(6, 182, 212, 0.3); }
+  to { border-color: rgba(6, 182, 212, 0.8); }
+}
+.cctv-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--accent-cyan);
+  margin-bottom: 4px;
+}
+.cctv-alert-body {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+.cctv-alert-image {
+  flex-shrink: 0;
+  width: 100px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: #000;
+}
+.cctv-alert-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cctv-alert-content {
+  flex-grow: 1;
+  font-size: 0.95rem;
+}
+.cctv-alert-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  font-size: 1.05rem;
+}
+.cctv-alert-detail {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.cctv-alert-badge {
+  display: inline-block;
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+.cctv-alert-badge.high-severity {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--severity-high);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.cctv-disclaimer {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cctv-modal-glass {
+  background: var(--bg-surface);
+  backdrop-filter: var(--blur-heavy);
+  -webkit-backdrop-filter: var(--blur-heavy);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  width: 650px;
+  max-width: 95%;
+  box-shadow: var(--shadow-base), 0 0 40px rgba(6, 182, 212, 0.1);
+  overflow: hidden;
+}
+.cctv-modal-header {
+  background: rgba(6, 182, 212, 0.1);
+  border-bottom: 1px solid var(--border-active);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cctv-modal-title {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cctv-modal-title i {
+  color: var(--accent-cyan);
+}
+.cctv-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px;
+}
+.cctv-modal-close:hover {
+  color: var(--text-primary);
+}
