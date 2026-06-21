@@ -764,44 +764,60 @@ function renderForecastResults(result) {
     let eHrs = Math.floor(e.duration_min / 60);
     let eMins = Math.round(e.duration_min % 60);
     let eDurationDisplay = eHrs > 0 ? `${eHrs}h ${eMins}m` : `${eMins}m`;
+    let simPct = Math.round(e.similarity_score * 100);
+    let simColor = simPct > 80 ? 'var(--accent-cyan)' : 'var(--text-secondary)';
+    
     return `
-    <div class="similar-event">
-      <div>
-        <span class="cause-tag">${e.event_cause.replace(/_/g, ' ')}</span>
-        <span class="text-muted" style="margin-left:6px">${e.corridor}</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 500; color: var(--text-primary); text-transform: capitalize;">${e.event_cause.replace(/_/g, ' ')}</span>
+          <span style="font-size: 0.75rem; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-secondary);">${e.corridor}</span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          <i data-lucide="clock" style="width:12px;height:12px; display:inline-block; margin-bottom:-2px;"></i> Duration: ${eDurationDisplay}
+        </div>
       </div>
-      <span class="duration">${eDurationDisplay}</span>
-      <span class="similarity">${Math.round(e.similarity_score * 100)}%</span>
+      <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Match</span>
+        <span style="font-weight: 700; color: ${simColor};">${simPct}%</span>
+      </div>
     </div>
   `}).join('');
 
   container.innerHTML = `
     <!-- Severity & Duration -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> Forecast Result</div>
-      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <div class="severity-badge ${severityClass}">
-          <i data-lucide="alert-circle" style="width:16px;height:16px;"></i> ${f.severity_tier} Severity
-        </div>
-        <span class="text-muted" style="font-size: 0.8rem;">
-          Method: <strong>${f.method === 'knn_analog_fallback' ? 'k-NN Analog Fallback' : 'GBT Model'}</strong>
-        </span>
+      <div class="result-section-title"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> AI Assessment</div>
+      
+      <div class="ai-assessment-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+         <div class="severity-badge ${severityClass}">
+            <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i> ${f.severity_tier} Severity Predicted
+         </div>
+         <div style="text-align: right;">
+            <div class="text-muted" style="font-size: 0.75rem; margin-bottom: 4px;">AI Confidence: ${confidencePct}%</div>
+            <div class="confidence-bar" style="width: 120px; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; display: inline-block;">
+              <div class="confidence-fill" style="width: ${confidencePct}%; height: 100%; background: ${confColor};"></div>
+            </div>
+         </div>
       </div>
-      <div class="confidence-bar" style="margin-top: 12px;">
-        <div class="confidence-fill" style="width: ${confidencePct}%; background: ${confColor};"></div>
-      </div>
-      <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Confidence: ${confidencePct}%</div>
-      <div class="metric-grid" style="margin-top: 16px;">
-        <div class="metric-item">
-          <span class="metric-label">Expected Clearance Time</span>
-          <span class="metric-value text-amber">${durationDisplay}</span>
-          <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Estimated time until the incident is fully resolved and traffic flow is restored.</div>
+
+      <div class="metric-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+        <div>
+          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Expected Clearance Time</div>
+          <div class="text-amber" style="font-size: 1.5rem; font-weight: 700;">${durationDisplay}</div>
         </div>
-        <div class="metric-item">
-          <span class="metric-label">Severity Probabilities</span>
-          <div class="sim-prob-bar" style="font-size: 0.8rem; color: var(--text-secondary);">
-            Low: ${Math.round(f.severity_probabilities.Low * 100)}% · 
-            High: ${Math.round(f.severity_probabilities.High * 100)}%
+        <div>
+          <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Severity Probabilities</div>
+          <div style="display: flex; gap: 16px; margin-top: 8px;">
+            <div style="display: flex; flex-direction: column;">
+              <span class="text-muted" style="font-size: 0.7rem;">Low</span>
+              <span style="font-weight: 600; color: var(--severity-low); font-size: 1.1rem;">${Math.round(f.severity_probabilities.Low * 100)}%</span>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+              <span class="text-muted" style="font-size: 0.7rem;">High</span>
+              <span style="font-weight: 600; color: var(--severity-high); font-size: 1.1rem;">${Math.round(f.severity_probabilities.High * 100)}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -822,6 +838,9 @@ function renderForecastResults(result) {
       </div>
       <div class="text-muted" style="font-size: 0.8rem; margin-top: 8px;">
         <strong>Reasoning:</strong> ${r.basis}
+      </div>
+      <div class="text-muted" style="font-size: 0.75rem; margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid var(--text-secondary);">
+        <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> <strong>Disclaimer:</strong> Real-time deployment data is unavailable. These resource recommendations are estimates derived from historical BTP deployment rules and heuristics for similar past events.
       </div>
     </div>
 
