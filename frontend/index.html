@@ -37,7 +37,7 @@
   <button class="nav-tab" data-tab="simulate" id="tab-simulate"><i data-lucide="zap"></i> Response Planner</button>
   <button class="nav-tab" data-tab="analytics" id="tab-analytics"><i data-lucide="bar-chart-2"></i> Analytics</button>
   <button class="nav-tab" data-tab="learning" id="tab-learning"><i data-lucide="refresh-cw"></i> System Accuracy</button>
-  <button class="nav-tab" data-tab="cctv" id="tab-cctv" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; font-weight: 600; box-shadow: 0 4px 15px rgba(16,185,129,0.3); border-radius: 8px;"><i data-lucide="camera"></i> CCTV AI</button>
+  <button class="nav-tab" data-tab="cctv" id="tab-cctv"><i data-lucide="camera"></i> CCTV AI</button>
 </nav>
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -435,30 +435,47 @@
     </div>
   </section>
 
-  <!-- ─── CCTV Analytics Tab ──────────────────────────────────────── -->
+  <!-- ─── Live Junction Monitor (Video Wall) ────────────────────────── -->
   <section class="tab-panel" id="panel-cctv">
     <div class="header-status" style="margin-bottom: 20px; display: inline-flex; width: 100%; justify-content: space-between;">
-      <h2><i data-lucide="camera" style="color: #10b981; margin-right: 10px;"></i> Live CCTV Analytics <span class="tagline">Powered by YOLOv8</span></h2>
+      <h2><i data-lucide="monitor-play" style="color: #10b981; margin-right: 10px;"></i> Live Junction Video Wall <span class="tagline">Automated YOLOv8 Surveillance</span></h2>
     </div>
     
+    <!-- Camera Selection Grid -->
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px;">
+      <button class="cam-select-btn" onclick="analyzeJunction('silk_board', 'Silk Board Junction')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 01 - Southbound</div>
+        <div style="font-weight: 600; font-size: 1.1rem; color: white;">Silk Board Junction</div>
+      </button>
+      <button class="cam-select-btn" onclick="analyzeJunction('kr_puram', 'KR Puram Bridge')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 48 - Eastbound</div>
+        <div style="font-weight: 600; font-size: 1.1rem; color: white;">KR Puram Bridge</div>
+      </button>
+      <button class="cam-select-btn" onclick="analyzeJunction('mg_road', 'MG Road Signal')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+        <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 5px;"><i data-lucide="video" style="width:14px;height:14px;display:inline;"></i> CAM 12 - Westbound</div>
+        <div style="font-weight: 600; font-size: 1.1rem; color: white;">MG Road Signal</div>
+      </button>
+    </div>
+
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
       <!-- Left Column: Camera Feed -->
       <div class="card" style="min-height: 500px; display: flex; flex-direction: column;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="card-title">Camera Feed Analysis</h3>
-          <div style="display: flex; gap: 10px;">
-            <input type="file" id="cctv-upload" accept="image/*" style="display: none;" />
-            <button class="btn btn-primary" onclick="document.getElementById('cctv-upload').click()"><i data-lucide="upload"></i> Upload Frame</button>
-          </div>
+          <h3 class="card-title" id="cctv-viewer-title">Select a camera to monitor...</h3>
         </div>
         
-        <div id="cctv-viewer" style="flex: 1; background: #111; border-radius: 8px; margin: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+        <div id="cctv-viewer" style="flex: 1; background: #050505; border-radius: 8px; margin: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; border: 1px solid #333;">
           <div id="cctv-placeholder" style="color: #666; text-align: center;">
-            <i data-lucide="camera-off" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"></i>
-            <p>Awaiting Feed / Upload Image</p>
+            <i data-lucide="monitor" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"></i>
+            <p>Standing by for live feed selection.</p>
           </div>
-          <img id="cctv-result-img" src="" alt="Analyzed CCTV Frame" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain;" />
+          <img id="cctv-result-img" src="" alt="Analyzed CCTV Frame" style="display: none; width: 100%; height: 100%; object-fit: cover;" />
           <div id="cctv-loader" class="loader" style="display: none; position: absolute;"></div>
+          
+          <!-- Live Overlay Badge -->
+          <div id="cctv-live-badge" style="display: none; position: absolute; top: 15px; left: 15px; background: rgba(239, 68, 68, 0.8); color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+            <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1s infinite;"></div> LIVE AI
+          </div>
         </div>
       </div>
       
@@ -507,7 +524,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Dashboard JS -->
-<script src="/static/app.js?v=11"></script>
+<script src="/static/app.js?v=12"></script>
 <script>
   lucide.createIcons();
 </script>

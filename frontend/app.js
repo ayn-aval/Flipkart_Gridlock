@@ -562,6 +562,16 @@ async function loadCorridorDropdowns() {
   populate('sim-zone', summary.zones, 'Select zone...');
   populate('sim-station', summary.police_stations, 'Select station...');
 
+  const stationSelect = document.getElementById('sim-station');
+  const zoneSelect = document.getElementById('sim-zone');
+  if (stationSelect && zoneSelect && summary.station_to_zone) {
+    stationSelect.addEventListener('change', (e) => {
+      const selectedStation = e.target.value;
+      if (selectedStation && summary.station_to_zone[selectedStation]) {
+        zoneSelect.value = summary.station_to_zone[selectedStation];
+      }
+    });
+  }
   
   const vehOptions = summary.veh_types.map(c => `<option value="${c}">${c.replace(/_/g, ' ')}</option>`).join('');
   const vehEl = document.getElementById('sim-veh');
@@ -929,35 +939,46 @@ document.getElementById('sim-day').addEventListener('change', function () {
 
 // ─── CCTV AI Logic ─────────────────────────────────────────────────────────────
 
-document.getElementById('cctv-upload').addEventListener('change', async function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+// ─── CCTV Live Junction Video Wall Logic ───────────────────────────────────────
 
+async function analyzeJunction(junctionId, junctionName) {
   const viewer = document.getElementById('cctv-viewer');
   const img = document.getElementById('cctv-result-img');
   const placeholder = document.getElementById('cctv-placeholder');
   const loader = document.getElementById('cctv-loader');
+  const liveBadge = document.getElementById('cctv-live-badge');
+  const title = document.getElementById('cctv-viewer-title');
   
+  // Highlight active button
+  document.querySelectorAll('.cam-select-btn').forEach(btn => {
+    btn.style.borderColor = 'var(--border)';
+    btn.style.boxShadow = 'none';
+  });
+  event.currentTarget.style.borderColor = '#10b981';
+  event.currentTarget.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.2)';
+
+  title.textContent = "Live Feed: " + junctionName;
   placeholder.style.display = 'none';
   img.style.display = 'none';
+  liveBadge.style.display = 'none';
   loader.style.display = 'block';
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
-    const response = await fetch('http://localhost:8000/vision/analyze', {
-      method: 'POST',
-      body: formData
-    });
+    const response = await fetch(`http://localhost:8000/vision/junction/${junctionId}`);
     
-    if (!response.ok) throw new Error("Failed to process image");
+    if (!response.ok) throw new Error("Failed to process junction feed");
     const result = await response.json();
+    
+    if (result.error) {
+      alert(result.error);
+      throw new Error(result.error);
+    }
     
     // Update Image
     img.src = result.annotated_image;
     loader.style.display = 'none';
     img.style.display = 'block';
+    liveBadge.style.display = 'flex';
     
     // Update Stats
     document.getElementById('cctv-status').textContent = result.status;
@@ -976,11 +997,10 @@ document.getElementById('cctv-upload').addEventListener('change', async function
     
   } catch (error) {
     console.error(error);
-    alert("Error processing CCTV frame. Make sure the backend server is running.");
     placeholder.style.display = 'block';
     loader.style.display = 'none';
   }
-});
+}
 
 
 // ─── Initialize ──────────────────────────────────────────────────────────────

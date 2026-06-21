@@ -225,6 +225,10 @@ def get_events_summary():
     """Get aggregated summary statistics for the dashboard."""
     df = events_df
 
+    station_to_zone = {}
+    if "police_station" in df.columns and "zone" in df.columns:
+        station_to_zone = df.dropna(subset=["police_station", "zone"]).drop_duplicates(subset=["police_station"]).set_index("police_station")["zone"].to_dict()
+
     return {
         "total_events": len(df),
         "by_severity": df["severity_tier"].value_counts().to_dict() if "severity_tier" in df.columns else {},
@@ -235,6 +239,7 @@ def get_events_summary():
         "corridors": sorted(df["corridor"].dropna().unique().tolist()),
         "zones": sorted(df["zone"].dropna().unique().tolist()),
         "police_stations": sorted(df["police_station"].dropna().unique().tolist()),
+        "station_to_zone": station_to_zone,
         "directions": sorted(df["direction"].dropna().unique().tolist()),
         "event_causes": sorted(df["event_cause"].unique().tolist()),
         "event_types": sorted(df["event_type"].unique().tolist()),
@@ -541,6 +546,29 @@ async def analyze_vision(file: UploadFile = File(...)):
     contents = await file.read()
     result = analyze_cctv_frame(contents)
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  GET /vision/junction/{junction_id} — Live Camera Feed Simulation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/vision/junction/{junction_id}", tags=["Computer Vision"])
+def analyze_junction_feed(junction_id: str):
+    """Simulates tapping into a live traffic camera feed at a specific junction and running YOLOv8."""
+    image_path = Path(f"data/cctv_samples/cam_{junction_id}.png")
+    
+    if not image_path.exists():
+        return {"error": f"Camera feed offline or unavailable for junction: {junction_id}"}
+        
+    try:
+        with open(image_path, "rb") as f:
+            file_bytes = f.read()
+            
+        from cv_engine import analyze_cctv_frame
+        result = analyze_cctv_frame(file_bytes)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
