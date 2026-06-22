@@ -11,7 +11,7 @@ echo "🚀 Starting Real-Time Simulation Stream..."
 python3 -u backend/simulate_stream.py &
 
 # 2. Start the API Server in the foreground
-# Use port 8000 by default, or the PORT environment variable if provided by the host
-export PORT="${PORT:-8000}"
+# Use port 7860 by default for Hugging Face Spaces, or the PORT environment variable if provided by the host
+export PORT="${PORT:-7860}"
 echo "🚀 Launching FastAPI server on port $PORT..."
 exec python3 -m uvicorn backend.api:app --host 0.0.0.0 --port $PORT
