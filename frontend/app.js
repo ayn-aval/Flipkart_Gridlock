@@ -426,6 +426,7 @@ function closeAlertModal() {
 // ─── Map Tab ─────────────────────────────────────────────────────────────────
 
 let map = null;
+let currentMarkers = [];
 let mapplsLoaded = false;
 let mapplsLoadPromise = null;
 
@@ -486,14 +487,13 @@ async function initMap() {
   }
 }
 
-let clusterLayer = null;
 
 const SEVERITY_COLORS = {
   High: '#ef4444',
   Low: '#34d399',
 };
 
-function createGeoJsonFeature(point) {
+function createMapplsMarker(point) {
   const color = SEVERITY_COLORS[point.severity_tier] || '#60a5fa';
   
   const popupHtml = `
@@ -506,16 +506,13 @@ function createGeoJsonFeature(point) {
     </div>
   `;
 
-  return {
-    "type": "Feature",
-    "properties": {
-      "htmlPopup": popupHtml
-    },
-    "geometry": {
-      "type": "Point",
-      "coordinates": [point.lon, point.lat]
-    }
-  };
+  const marker = new mappls.Marker({
+    map: map,
+    position: {lat: point.lat, lng: point.lon},
+    popupHtml: popupHtml
+  });
+
+  return marker;
 }
 
 async function refreshMap() {
@@ -530,42 +527,30 @@ async function refreshMap() {
     const severity = document.getElementById('map-filter-severity').value;
     const corridor = document.getElementById('map-filter-corridor').value;
 
-    let url = '/hotspots/geo?limit=5000';
+    let url = '/hotspots/geo?limit=500'; // Reduced from 5000 to prevent crowding
     if (cause) url += `&event_cause=${encodeURIComponent(cause)}`;
     if (severity) url += `&severity=${encodeURIComponent(severity)}`;
     if (corridor) url += `&corridor=${encodeURIComponent(corridor)}`;
 
     const data = await apiFetch(url);
 
-    // Remove existing cluster layer
-    if (clusterLayer) {
-      mappls.remove({map: map, layer: clusterLayer});
-      clusterLayer = null;
+    // Remove existing markers
+    if (currentMarkers && currentMarkers.length > 0) {
+      currentMarkers.forEach(m => mappls.remove({map: map, layer: m}));
     }
+    currentMarkers = [];
 
-    // Add new cluster layer
+    // Add new markers
     if (data.points && data.points.length > 0) {
-      // Filter out points with invalid coordinates to prevent MapmyIndia crashes
-      const validPoints = data.points.filter(p => p.lon != null && p.lat != null && !isNaN(p.lon) && !isNaN(p.lat));
-      
-      const geoData = {
-        "type": "FeatureCollection",
-        "features": validPoints.map(createGeoJsonFeature)
-      };
-
-      clusterLayer = new mappls.MarkerCluster({
-        map: map,
-        marker: geoData,
-        fitbounds: false,
-        clustersOptions: {
-          color: "white",
-          bgcolor: "#8b5cf6" // Dashboard purple accent color
+      data.points.forEach(p => {
+        if (p.lon != null && p.lat != null && !isNaN(p.lon) && !isNaN(p.lat)) {
+          currentMarkers.push(createMapplsMarker(p));
         }
       });
     }
 
     btn.innerHTML = `<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> ${data.count} events`;
-    btn.title = "Displaying up to 5,000 events to maintain browser performance";
+    btn.title = "Displaying up to 500 events to maintain visibility without premium clustering";
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     btn.innerHTML = '<i data-lucide="x-circle" style="width:16px;height:16px;"></i> Error';
