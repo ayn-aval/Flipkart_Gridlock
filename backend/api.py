@@ -430,7 +430,7 @@ def forecast_event(request: ForecastRequest):
     sim_id = f"SIM-{random.randint(1000, 9999)}"
     active_predictions[sim_id] = {
         "severity_tier": forecast_result["severity_tier"],
-        "duration_to_close_min": forecast_result["duration_to_close_min"]
+        "duration_to_close_min": forecast_result["expected_duration_min"]
     }
 
     return {
