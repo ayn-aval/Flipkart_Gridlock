@@ -1,12 +1,4 @@
----
-title: Namma Route
-emoji: 🚦
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
-app_port: 7860
----
+
 <div align="center">
   <img src="frontend/assets/logo.png" width="250" alt="Namma Route Logo" style="filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));">
 
@@ -26,7 +18,7 @@ app_port: 7860
 
 ---
 
-## 🚀 Live Deployment
+##  Live Deployment
 
 The system is deployed globally as a high-performance containerized web application on Hugging Face Spaces. 
 
@@ -75,7 +67,7 @@ mindmap
 
 ---
 
-## 🧠 System Architecture & Data Flow
+##  System Architecture & Data Flow
 
 The system consists of four deeply integrated layers that automate the entire lifecycle of a traffic event—from edge-node detection to command-center resolution.
 
@@ -117,7 +109,7 @@ graph TD
 
 ---
 
-## ⚡ Core Enterprise Features
+##  Core Enterprise Features
 
 ### 1. Automated CCTV Edge Processing (Computer Vision)
 Instead of forcing human operators to monitor 10,000 city cameras, our integrated **YOLOv8** pipeline acts as an autonomous watchtower. It processes live junction feeds to detect static anomalies (breakdowns, accidents) and calculates vehicle density, injecting high-priority JSON alerts directly into the API with zero latency.
@@ -138,7 +130,7 @@ Traffic dynamics change constantly. Ground officers can log the *actual* clearan
 
 ---
 
-## 📊 Dataset & Exploratory Data Analysis (EDA)
+##  Dataset & Exploratory Data Analysis (EDA)
 
 The models are powered by an anonymized Bengaluru traffic-event log (November 2023 – April 2024).
 - **Size:** 8,200 rows × 46 columns
@@ -149,7 +141,7 @@ The models are powered by an anonymized Bengaluru traffic-event log (November 20
 
 ---
 
-## 💻 Local Installation & Usage
+##  Local Installation & Usage
 
 If you prefer to run the system locally for development or testing:
 
@@ -183,7 +175,7 @@ Access the dashboard at: **http://localhost:7860** *(Port 7860 is used by defaul
 
 ---
 
-## 🐳 Production Deployment (Docker)
+##  Production Deployment (Docker)
 
 The application is fully containerized for zero-configuration cloud deployment on Hugging Face or AWS/GCP.
 
