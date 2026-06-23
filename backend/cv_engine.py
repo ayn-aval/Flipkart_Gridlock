@@ -4,8 +4,15 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 
-# Load the YOLOv8 Nano model (will download ~6MB weights on first run)
-model = YOLO('yolov8n.pt')
+# Global variable for lazy loading
+_model = None
+
+def get_yolo_model():
+    global _model
+    if _model is None:
+        print("[CV] Lazy-loading YOLOv8 model into memory...")
+        _model = YOLO('yolov8n.pt')
+    return _model
 
 # COCO Dataset classes we care about for traffic
 VEHICLE_CLASSES = {
@@ -27,7 +34,8 @@ def analyze_cctv_frame(image_bytes: bytes) -> dict:
     if img is None:
         return {"error": "Invalid image format"}
 
-    # Run YOLOv8 inference
+    # Run YOLOv8 inference (lazy loads model if first time)
+    model = get_yolo_model()
     results = model(img, classes=list(VEHICLE_CLASSES.keys()), conf=0.25)
     
     # Extract results
