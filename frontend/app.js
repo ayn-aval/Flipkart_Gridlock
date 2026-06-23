@@ -1032,7 +1032,7 @@ window.submitFeedback = async function(e) {
   if (window.lucide) lucide.createIcons();
   
   const payload = {
-    event_id: document.getElementById('fb-event-id').value,
+    event_id: document.getElementById('fb-event-id').value.trim(),
     actual_severity: document.getElementById('fb-severity').value,
     actual_duration_min: parseFloat(document.getElementById('fb-duration').value),
     feedback_notes: ""
