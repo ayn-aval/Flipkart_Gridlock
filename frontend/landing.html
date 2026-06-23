@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Namma Route | Event-Driven Congestion Forecasting</title>
+  <link rel="stylesheet" href="/static/landing.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ 
+      startOnLoad: true, 
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#16181e',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#8b5cf6',
+        secondaryColor: '#0f111a',
+        tertiaryColor: '#0b0c10',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }
+    });
+  </script>
+</head>
+<body>
+  <!-- Ambient Background Orbs -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <!-- Kept empty to balance flexbox layout, logo moved to center -->
+      </div>
+      <a href="/dashboard" class="cta-button" style="padding: 0.5rem 1.2rem; font-size: 0.95rem;">
+        Dashboard <i data-lucide="arrow-right" style="width: 18px;"></i>
+      </a>
+    </header>
+
+    <section class="hero">
+      <div class="hero-brand">
+        <img src="/static/assets/logo.png" alt="Namma Route Logo" class="hero-logo">
+        <h2 class="hero-title">Namma Route</h2>
+      </div>
+      <h3 class="hero-subtitle">Event-Driven Congestion Forecasting</h3>
+      <p>An enterprise-grade Decision Support System custom-built for the Bengaluru Traffic Police. It uses computer vision and machine learning to instantly forecast the impact of traffic anomalies and recommend surgical resource deployments before gridlock cascades across the city.</p>
+      
+      <a href="/dashboard" class="cta-button">
+        <i data-lucide="activity"></i> Launch Command Center
+      </a>
+    </section>
+
+    <section class="modules">
+      <h2 class="section-title">The Four Core Pillars</h2>
+      <div class="grid">
+        
+        <div class="card">
+          <div class="icon-wrapper">
+            <i data-lucide="camera"></i>
+          </div>
+          <h3>Automated CCTV Watchtower</h3>
+          <p>Autonomous YOLOv8 computer vision engine that monitors live junction feeds to detect accidents and breakdowns, bypassing slow manual reporting.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrapper">
+            <i data-lucide="bar-chart-2"></i>
+          </div>
+          <h3>Impact Forecasting Engine</h3>
+          <p>XGBoost and KNN machine learning models instantly predict the severity and exact clearance duration of an event before gridlock cascades.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrapper">
+            <i data-lucide="shield-alert"></i>
+          </div>
+          <h3>Resource Recommendation</h3>
+          <p>A deterministic heuristic planner that tells dispatchers exactly what resources to deploy (e.g. Heavy Tow Trucks) and calculates optimal diversions.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrapper">
+            <i data-lucide="refresh-cw"></i>
+          </div>
+          <h3>Continuous Learning Loop</h3>
+          <p>An automated feedback mechanism where ground officers log actual clearance times, allowing the system to continuously retrain and adapt to the city.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="info-section">
+      <h2 class="section-title">System Architecture</h2>
+      <div class="tabs-container">
+        
+        <div class="tab-buttons">
+          <button class="tab-btn active" data-target="tab-flow"><i data-lucide="git-merge"></i> Architecture Flow</button>
+          <button class="tab-btn" data-target="tab-data"><i data-lucide="database"></i> Data Foundation</button>
+          <button class="tab-btn" data-target="tab-partners"><i data-lucide="users"></i> Partners & Technology</button>
+        </div>
+
+        <div class="tab-content-area">
+          <!-- Architecture Flow Tab -->
+          <div class="tab-pane active" id="tab-flow">
+            <div class="info-card" style="text-align: center; padding: 2rem;">
+              <div class="mermaid">
+                graph TD
+                    A[Live CCTV Feeds] -->|YOLOv8 Computer Vision| B(Anomaly Detected)
+                    C[Astram Historical Data] --> D(Event Dispatcher)
+                    B -.->|Real-time Alert| D
+                    D -->|JSON Payload| E{XGBoost Forecasting Engine}
+                    E -->|Classification| F[Severity Prediction]
+                    E -->|Regression| G[Clearance Duration]
+                    F --> H[Resource Recommendation Heuristics]
+                    G --> H
+                    H --> I[BTP Command Dashboard]
+                    I -->|Officer Verification| J((Continuous Learning Loop))
+                    J -.->|Retrain Feedback CSV| E
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Tab -->
+          <div class="tab-pane" id="tab-data">
+            <div class="info-card">
+              <h3><i data-lucide="database"></i> Astram Data Platform</h3>
+              <ul>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>Source:</strong> Anonymized Bengaluru traffic-event logs from the official Astram platform.</span>
+                </li>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>Scale:</strong> Over 8,200 meticulously cleaned historical events spanning 6 months.</span>
+                </li>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>Engineering:</strong> Features include hour-of-day, spatial clustering, and log-transformed durations.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Partners Tab -->
+          <div class="tab-pane" id="tab-partners">
+            <div class="info-card">
+              <h3><i data-lucide="users"></i> Ecosystem Integration</h3>
+              <ul>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>Flipkart Gridlock 2.0:</strong> Developed exclusively for the Flipkart Gridlock hackathon challenge.</span>
+                </li>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>Bengaluru Traffic Police:</strong> Designed specifically for BTP Command Center operational workflows.</span>
+                </li>
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span><strong>MapmyIndia (Mappls):</strong> Powered by highly accurate, enterprise-grade geographic map tiles for real-time visualization.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer>
+      <p>&copy; 2026 Namma Route. Intelligent Traffic Operations.</p>
+    </footer>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Tab switching logic
+    document.querySelectorAll('.tab-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        // Remove active class from all buttons and panes
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        
+        // Add active class to clicked button
+        button.classList.add('active');
+        
+        // Show target pane
+        const targetId = button.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

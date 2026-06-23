@@ -28,9 +28,12 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and SIGTERM
 trap cleanup SIGINT SIGTERM
 
+# Use port 7860 to avoid conflicts with other local dev servers (e.g. Django)
+export PORT=7860
+
 # 1. Start the API Server
-echo "🚀 Launching FastAPI server on port 8000..."
-python3 -m uvicorn backend.api:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+echo "🚀 Launching FastAPI server on port $PORT..."
+python3 -m uvicorn backend.api:app --host 0.0.0.0 --port $PORT > /dev/null 2>&1 &
 API_PID=$!
 
 # Wait for API to become healthy
@@ -38,7 +41,7 @@ echo "⏳ Waiting for API to become ready..."
 MAX_RETRIES=15
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -s http://localhost:8000/health > /dev/null; then
+    if curl -s -f http://localhost:$PORT/health > /dev/null; then
         echo "✅ API is online and healthy!"
         break
     fi
@@ -58,7 +61,7 @@ SIM_PID=$!
 
 echo "============================================================"
 echo "🎯 GRIDLOCK IS LIVE!"
-echo "👉 Open your browser to: http://localhost:8000/"
+echo "👉 Open your browser to: http://localhost:$PORT/"
 echo "⚙️  Press Ctrl+C to stop the demo."
 echo "============================================================"
 

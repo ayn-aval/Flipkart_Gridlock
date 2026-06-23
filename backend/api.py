@@ -627,8 +627,13 @@ if EDA_DIR.exists():
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 @app.get("/", tags=["Frontend"])
-def serve_frontend():
-    """Serve the dashboard."""
+def serve_landing():
+    """Serve the landing page."""
+    return FileResponse(str(FRONTEND_DIR / "landing.html"))
+
+@app.get("/dashboard", tags=["Frontend"])
+def serve_dashboard():
+    """Serve the main dashboard."""
     return FileResponse(str(FRONTEND_DIR / "index.html"))
 
 if FRONTEND_DIR.exists():
