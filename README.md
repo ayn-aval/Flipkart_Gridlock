@@ -6,132 +6,131 @@ sdk: docker
 app_port: 7860
 ---
 
-# Namma Route: Event-Driven Congestion Forecasting & Resource Recommendation System
+# 🚦 Namma Route
+### Event-Driven Congestion Forecasting & Resource Recommendation System
 
-## System Overview
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Hugging_Face-blue?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/aynaval2003/namma-route)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-Computer_Vision-yellow?style=for-the-badge)](https://ultralytics.com)
+[![XGBoost](https://img.shields.io/badge/XGBoost-Machine_Learning-green?style=for-the-badge)](#)
 
-Namma Route is an enterprise-grade Decision Support System (DSS) engineered for municipal traffic command centers. The platform shifts traffic management from a reactive operational model to a predictive one by integrating computer vision, machine learning forecasting, and heuristic-based resource allocation. 
+> **Flipkart Gridlock 2.0 Prototype** — Namma Route transforms municipal traffic management from a *reactive* operational model to a highly *predictive* Decision Support System.
 
-The primary objective is to accurately predict the spatial and temporal fallout of localized traffic events (e.g., accidents, vehicular breakdowns, construction, public gatherings) and automate the deployment of emergency resources and diversion protocols before systemic gridlock occurs.
+---
 
-## Process Flow Architecture
+## 🔗 Live Deployment
+
+The system is deployed globally as a containerized web application on Hugging Face Spaces. 
+
+👉 **[Access the Live Dashboard Here](https://huggingface.co/spaces/aynaval2003/namma-route)**
+
+*(Note: The application requires a Mappls API key to render the high-performance geographic tiles. This is injected securely via Hugging Face Secrets).*
+
+---
+
+## 🧠 System Architecture & Data Flow
+
+The system consists of four deeply integrated layers that automate the entire lifecycle of a traffic event—from detection to resolution.
 
 ```mermaid
 graph TD
     %% Define styles
-    classDef external fill:#f8f9fa,stroke:#dee2e6,stroke-width:1px,color:#212529;
-    classDef core fill:#e7f5ff,stroke:#74c0fc,stroke-width:1px,color:#212529;
-    classDef ml fill:#f3f0ff,stroke:#b197fc,stroke-width:1px,color:#212529;
-    classDef ui fill:#ebfbee,stroke:#69db7c,stroke-width:1px,color:#212529;
+    classDef core fill:#e7f5ff,stroke:#74c0fc,stroke-width:2px,color:#212529;
+    classDef ml fill:#f3f0ff,stroke:#b197fc,stroke-width:2px,color:#212529;
 
-    subgraph Ingestion Layer
-        A[External APIs / Manual Entry]:::external
-        B[CCTV RTSP Feeds]:::external
-        C(YOLOv8 Vision Engine):::core
-        D(Event Ingestion Pipeline):::core
-        
-        B --> C
-        C -->|Vehicle Density & Anomaly Detection| D
-        A --> D
-    end
+    A[CCTV RTSP Feeds] -->|Live Feed| B(YOLOv8 Vision Engine):::core
+    A2[Manual ASTRAM Entry] -->|Dispatcher| D(Event Ingestion Pipeline)
+    
+    B -->|Anomaly Detection| D
+    
+    D --> E{Impact Forecasting Engine}:::ml
+    
+    E -->|Duration Prediction| F[XGBoost Regressor]:::ml
+    E -->|Severity Classification| G[GBT Classifier]:::ml
+    E -->|Irregular Event Fallback| H[KNN Analog Finder]:::ml
 
-    subgraph Predictive Layer
-        E{Impact Forecasting Engine}:::ml
-        F[XGBoost Duration Regressor]:::ml
-        G[GBT Severity Classifier]:::ml
-        H[KNN Analog Fallback]:::ml
-
-        D --> E
-        E --> F
-        E --> G
-        E -->|Irregular Events| H
-    end
-
-    subgraph Decision Layer
-        I[Resource Recommendation Engine]:::core
-        J[Corridor Adjacency Matrix]:::core
-        
-        F --> I
-        G --> I
-        H --> I
-        J -->|Spatial Heuristics| I
-    end
-
-    subgraph Presentation & Feedback Layer
-        K[Traffic Control Dashboard]:::ui
-        L(Continuous Learning Loop):::core
-
-        I -->|Deployment Specs & Diversions| K
-        K -->|Actual Clearance Metrics| L
-        L -.->|Automated Retraining| E
-    end
+    F --> I[Resource Recommendation Engine]:::core
+    G --> I
+    H --> I
+    
+    I -->|Deployment & Diversions| K[Traffic Control Dashboard]
+    
+    K -->|Post-Resolution Clearance Data| L(Continuous Learning Loop):::core
+    L -.->|Automated Retraining| E
 ```
 
-## Component Architecture
+---
 
-### 1. Computer Vision Ingestion (YOLOv8)
-Processes live or simulated junction feeds to detect static anomalies (breakdowns, accidents) and high vehicle density. The vision engine operates autonomously, bypassing the need for manual event entry and minimizing system latency.
+## 🛠 Core Features in Detail
 
-### 2. Impact Forecasting Engine (Scikit-Learn / XGBoost)
-Executes real-time inference on incoming event vectors. 
-- **Severity Classification:** Gradient Boosted Trees classifier utilizing categorical features (cause, day, time period, road closure) to categorize impact magnitude.
-- **Duration Regression:** XGBoost regressor predicting absolute clearance time. The target variable is log-transformed during training to account for the heavy right-tail distribution of prolonged events.
-- **Analog Fallback (KNN):** Standard regression models typically underperform on highly irregular planned events (e.g., major political rallies). The system implements a K-Nearest Neighbors fallback utilizing Cosine Similarity to extract the median clearance time of the 5 most historically similar past events.
+### 1. Automated CCTV Watchtower (Computer Vision)
+Instead of forcing human operators to monitor 10,000 city cameras, our integrated **YOLOv8** pipeline processes live junction feeds autonomously. It detects static anomalies (breakdowns, accidents) and calculates vehicle density, injecting high-priority alerts directly into the forecasting engine with zero latency.
 
-### 3. Resource Recommendation Engine
-A deterministic heuristic layer that translates ML outputs into actionable operations. It cross-references the predicted severity against a predefined resource matrix to allocate personnel, barricades, and specialized vehicles (e.g., Heavy Tow Trucks). Furthermore, it calculates optimal alternate diversion corridors utilizing a pre-computed Haversine spatial adjacency matrix.
+### 2. Impact Forecasting Engine (Machine Learning)
+When an event occurs, the system instantly predicts the fallout using models trained on 8,057 historical Bengaluru traffic events:
+- **Severity Classifier (Gradient Boosted Trees):** Achieves **71.9% accuracy** in predicting Low/Medium/High severity tiers based on event cause, time of day, and road closure requirements.
+- **Duration Regressor (XGBoost):** Predicts the exact minutes required to clear the incident. The target variable is log-transformed during training to account for the heavy right-tail distribution of prolonged events.
+- **Analog Fallback (K-Nearest Neighbors):** For highly irregular planned events (e.g., massive political rallies), standard regression underperforms. The system falls back to a KNN model using Cosine Similarity to find the 5 most historically similar past events and returns their median clearance time.
 
-### 4. Continuous Learning Loop
-A feedback mechanism allowing ground officers to input actual clearance times post-resolution. The system aggregates this telemetry data to periodically retrain the underlying forecasting models, ensuring the system adapts to evolving civic infrastructure and traffic patterns.
+### 3. Surgical Resource Recommendation Engine
+A deterministic heuristic layer that translates ML outputs into actionable field operations.
+- Cross-references predicted severity against a predefined matrix to allocate exact personnel count, barricades, and specialized vehicles (e.g., Heavy Tow Trucks).
+- **Diversion Routing:** Utilizes a pre-computed Haversine spatial adjacency matrix to recommend the top 2 optimal alternate corridors based on historical traffic flow at that exact hour.
 
-## Local Installation & Configuration
+### 4. The Continuous Learning Loop
+Traffic dynamics change constantly. The system features a "System Accuracy" tab where ground officers log the *actual* clearance time vs the *predicted* time. The system stores this telemetry data and automatically retrains its own models upon reboot, ensuring the intelligence adapts to evolving civic infrastructure.
 
-### Prerequisites
+---
+
+## 📊 Dataset & Exploratory Data Analysis (EDA)
+
+The models are powered by an anonymized Bengaluru traffic-event log (November 2023 – April 2024).
+- **Size:** 8,200 rows × 46 columns
+- **Engineered Features:** Included `hour_of_day`, `is_weekend`, `duration_to_close_min`, `severity_tier`, and geographic centroid clustering.
+
+*(Extensive EDA charts, including event density heatmaps and duration distributions, are available directly within the "Analytics" tab of the Live Dashboard).*
+
+---
+
+## 💻 Local Installation & Usage
+
+If you prefer to run the system locally for development or testing:
+
+### 1. Prerequisites
 - Python 3.9+
-- Valid Mappls (MapmyIndia) API Key
+- A [Mappls (MapmyIndia) API Key](https://about.mappls.com/api/)
 
-### Setup Instructions
-
-1. **Clone the Repository:**
+### 2. Setup
 ```bash
+# Clone the repository
 git clone https://github.com/your-username/namma-route.git
 cd namma-route
-```
 
-2. **Install Dependencies:**
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-3. **Configure Environment Variables:**
+### 3. Environment Configuration
 Create a `.env` file in the root directory:
 ```env
-MAPPLS_API_KEY=your_production_api_key_here
+MAPPLS_API_KEY=your_actual_api_key_here
 ```
 
-4. **Launch Application:**
-The project includes a launch script that concurrently initializes the FastAPI backend and the background event simulator.
+### 4. Launch the Application
+The `run_demo.sh` script boots up both the FastAPI backend and the background Real-Time Event Simulator.
 ```bash
 chmod +x run_demo.sh
 ./run_demo.sh
 ```
-
-The dashboard will be available at: `http://localhost:8000`
-
-## Production Deployment (Docker / Hugging Face Spaces)
-
-The application is containerized for zero-configuration deployment on platforms supporting Docker infrastructure.
-
-### Deployment Protocol
-1. Initialize a Docker-compatible environment (e.g., Hugging Face Spaces).
-2. Sync the repository contents.
-3. Configure environment secrets:
-   - Variable Name: `MAPPLS_API_KEY`
-   - Value: `[Your API Key]`
-4. The `Dockerfile` executes the following sequence:
-   - Installs requisite Linux graphics dependencies (`libgl1`, `libglib2.0-0`) for headless OpenCV execution.
-   - Executes `backend/forecasting.py` to compile and pickle the ML models locally, preventing cross-version Pandas unpickling errors.
-   - Exposes port `7860` and initiates `start_prod.sh`.
+Access the dashboard at: **http://localhost:8000**
 
 ---
-*Technical Prototype Developed for Flipkart Gridlock 2.0*
+
+## 🐳 Production Deployment (Docker)
+
+The application is fully containerized for zero-configuration cloud deployment.
+
+The `Dockerfile`:
+1. Installs necessary Linux graphics dependencies (`libgl1`, `libglib2.0-0`) for headless OpenCV execution.
+2. Executes `python3 backend/forecasting.py` to compile and pickle the ML models locally *inside* the container, completely preventing cross-version Pandas unpickling errors.
+3. Exposes port `7860` and initiates `start_prod.sh`.
