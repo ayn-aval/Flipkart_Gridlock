@@ -1,3 +1,12 @@
+---
+title: Namma Route
+emoji: 🚦
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+app_port: 7860
+---
 
 <div align="center">
   <img src="frontend/assets/logo.png" width="250" alt="Namma Route Logo" style="filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));">
