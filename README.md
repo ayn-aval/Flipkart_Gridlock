@@ -6,7 +6,7 @@ sdk: docker
 app_port: 7860
 ---
 
-# 🚦 Namma Route
+# <img src="frontend/assets/logo.png" width="50" align="top"> Namma Route
 ### Event-Driven Congestion Forecasting & Resource Recommendation System
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Hugging_Face-blue?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/aynaval2003/namma-route)
