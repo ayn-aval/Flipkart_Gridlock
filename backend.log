@@ -7629,3 +7629,7 @@ INFO:     127.0.0.1:64232 - "GET /swagger/ HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:64232 - "GET /swagger/ HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:64232 - "GET /swagger/ HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:64232 - "GET /swagger/ HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24623]
