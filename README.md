@@ -1,3 +1,12 @@
+---
+title: Namma Route
+emoji: 🚦
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # 🚦 Event-Driven Congestion Forecasting & Resource Recommendation System
 
 **Flipkart Gridlock 2.0 — Round 2 Prototype**
