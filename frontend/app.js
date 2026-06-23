@@ -8,7 +8,7 @@
  * - Analytics with EDA gallery
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = window.location.origin;
 
 // ─── Tab Navigation ──────────────────────────────────────────────────────────
 
@@ -1045,7 +1045,7 @@ async function analyzeJunction(junctionId, junctionName) {
   loader.style.display = 'block';
 
   try {
-    const response = await fetch(`http://localhost:8000/vision/junction/${junctionId}`);
+    const response = await fetch(`${API_BASE}/vision/junction/${junctionId}`);
     
     if (!response.ok) throw new Error("Failed to process junction feed");
     const result = await response.json();
