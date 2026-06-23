@@ -29,6 +29,9 @@ USER user
 # Make the startup script executable
 RUN chmod +x start_prod.sh
 
+# Retrain models inside the container to prevent Python/Pandas version mismatch pickle errors
+RUN python3 backend/forecasting.py
+
 # Expose port 7860 (Hugging Face default)
 EXPOSE 7860
 
