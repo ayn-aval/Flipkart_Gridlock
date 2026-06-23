@@ -6,8 +6,12 @@ sdk: docker
 app_port: 7860
 ---
 
-# <img src="frontend/assets/logo.png" width="50" align="top"> Namma Route
-### Event-Driven Congestion Forecasting & Resource Recommendation System
+<div align="center">
+  <img src="frontend/assets/logo.png" width="300" alt="Namma Route Logo">
+
+  # Namma Route
+  ### Event-Driven Congestion Forecasting & Resource Recommendation System
+</div>
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Hugging_Face-blue?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/aynaval2003/namma-route)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -18,7 +22,7 @@ app_port: 7860
 
 ---
 
-## 🔗 Live Deployment
+##  Live Deployment
 
 The system is deployed globally as a containerized web application on Hugging Face Spaces. 
 
@@ -28,7 +32,7 @@ The system is deployed globally as a containerized web application on Hugging Fa
 
 ---
 
-## 🧠 System Architecture & Data Flow
+## System Architecture & Data Flow
 
 The system consists of four deeply integrated layers that automate the entire lifecycle of a traffic event—from detection to resolution.
 
@@ -61,7 +65,7 @@ graph TD
 
 ---
 
-## 🛠 Core Features in Detail
+##  Core Features in Detail
 
 ### 1. Automated CCTV Watchtower (Computer Vision)
 Instead of forcing human operators to monitor 10,000 city cameras, our integrated **YOLOv8** pipeline processes live junction feeds autonomously. It detects static anomalies (breakdowns, accidents) and calculates vehicle density, injecting high-priority alerts directly into the forecasting engine with zero latency.
@@ -82,7 +86,7 @@ Traffic dynamics change constantly. The system features a "System Accuracy" tab 
 
 ---
 
-## 📊 Dataset & Exploratory Data Analysis (EDA)
+##  Dataset & Exploratory Data Analysis (EDA)
 
 The models are powered by an anonymized Bengaluru traffic-event log (November 2023 – April 2024).
 - **Size:** 8,200 rows × 46 columns
@@ -92,7 +96,7 @@ The models are powered by an anonymized Bengaluru traffic-event log (November 20
 
 ---
 
-## 💻 Local Installation & Usage
+##  Local Installation & Usage
 
 If you prefer to run the system locally for development or testing:
 
@@ -126,7 +130,7 @@ Access the dashboard at: **http://localhost:8000**
 
 ---
 
-## 🐳 Production Deployment (Docker)
+##  Production Deployment (Docker)
 
 The application is fully containerized for zero-configuration cloud deployment.
 
