@@ -526,8 +526,9 @@ async function refreshMap() {
     const cause = document.getElementById('map-filter-cause').value;
     const severity = document.getElementById('map-filter-severity').value;
     const corridor = document.getElementById('map-filter-corridor').value;
+    const limit = document.getElementById('map-filter-limit')?.value || 500;
 
-    let url = '/hotspots/geo?limit=500'; // Reduced from 5000 to prevent crowding
+    let url = `/hotspots/geo?limit=${limit}`;
     if (cause) url += `&event_cause=${encodeURIComponent(cause)}`;
     if (severity) url += `&severity=${encodeURIComponent(severity)}`;
     if (corridor) url += `&corridor=${encodeURIComponent(corridor)}`;
@@ -550,7 +551,7 @@ async function refreshMap() {
     }
 
     btn.innerHTML = `<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> ${data.count} events`;
-    btn.title = "Displaying up to 500 events to maintain visibility without premium clustering";
+    btn.title = `Displaying up to ${limit} events`;
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     btn.innerHTML = '<i data-lucide="x-circle" style="width:16px;height:16px;"></i> Error';

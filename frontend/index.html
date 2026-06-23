@@ -205,6 +205,16 @@
           <option value="">All Corridors</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label>Display Limit</label>
+        <select id="map-filter-limit">
+          <option value="100">100 Events</option>
+          <option value="500" selected>500 Events</option>
+          <option value="1000">1,000 Events</option>
+          <option value="5000">5,000 Events</option>
+          <option value="8200">Max (8,200 Events)</option>
+        </select>
+      </div>
       <button class="btn btn-primary" id="map-refresh-btn" onclick="refreshMap()"><i data-lucide="refresh-cw"></i> Refresh Map</button>
     </div>
     <div class="map-container">
