@@ -66,6 +66,7 @@ app.add_middleware(
 events_df: pd.DataFrame = None
 forecast_engine = None
 rec_engine = None
+active_predictions = {}
 
 
 def nan_safe_records(df: pd.DataFrame) -> list:
