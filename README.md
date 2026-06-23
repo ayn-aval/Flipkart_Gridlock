@@ -9,6 +9,24 @@ Political rallies, festivals, sports events, construction activities, and sudden
 - **Resource deployment is experience-driven** → addressed by our Recommendation Engine (Phase 3)
 - **No post-event learning system** → addressed by our Feedback Loop (Phase 6)
 
+## 🚀 Live Demo (For Judges)
+
+We have deployed a 24/7 live prototype on Hugging Face Spaces for instant evaluation. 
+
+**[Link to Live Dashboard]** *(Replace with your huggingface.co URL after pushing)*
+
+### Local Fallback (If Live Version Fails)
+If the Hugging Face space is down or you prefer to run the prototype locally on your own machine, you can run the built-in demo script. This will launch both the FastAPI backend and the Real-Time Event Simulator:
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Launch the prototype (Server + Simulator)
+./run_demo.sh
+```
+Then open your browser to **http://localhost:8000/**.
+
 ## Architecture
 
 ```
@@ -42,20 +60,6 @@ See `data/processed/data_audit.md` for the full data audit report.
 | 5 | Dashboard Frontend | ✅ Complete |
 | 6 | Real-Time Simulation + Learning Loop | ✅ Complete |
 | 7 | Polish & Demo Readiness | ✅ Complete |
-
-## Quick Start (Demo Mode)
-
-The easiest way to see the prototype in action is to use the demo script, which launches both the FastAPI backend and the Real-Time Event Simulator in the background:
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Launch the prototype
-./run_demo.sh
-```
-
-Then open your browser to **http://localhost:8000/**.
 
 ## Advanced Usage
 
