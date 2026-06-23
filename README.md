@@ -7,183 +7,137 @@ sdk: docker
 app_port: 7860
 ---
 
-# 🚦 Event-Driven Congestion Forecasting & Resource Recommendation System
+# 🚦 Namma Route — Event-Driven Congestion Forecasting & Resource Recommendation System
 
-**Flipkart Gridlock 2.0 — Round 2 Prototype**
+**A Paradigm Shift in Traffic Management from Reactive to Proactive**
 
-## Problem Statement
+![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Deployed-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![YOLOv8](https://img.shields.io/badge/YOLOv8-Computer_Vision-yellow)
 
-Political rallies, festivals, sports events, construction activities, and sudden gatherings create localized traffic breakdowns in Bengaluru. Today:
-- **Event impact is not quantified in advance** → addressed by our Forecasting Engine (Phase 2)
-- **Resource deployment is experience-driven** → addressed by our Recommendation Engine (Phase 3)
-- **No post-event learning system** → addressed by our Feedback Loop (Phase 6)
+---
+
+## 📖 The Problem
+
+Today, city traffic management is largely **reactive**. An accident happens, a traffic jam builds up over 30 minutes, mapping applications turn red, and *then* the police dispatch a unit. By the time the unit arrives, the gridlock has already paralyzed the corridor. Furthermore, dispatching is guesswork—sending a standard patrol car to a flipped truck wastes 40 minutes because they eventually have to call a heavy crane anyway.
+
+## 💡 Our Solution: Namma Route
+
+**Namma Route** is a comprehensive, AI-powered Decision Support System built for Traffic Police Command Centers. Instead of waiting for gridlock, the system detects anomalies, instantly predicts the fallout, recommends surgical resource deployments, and learns from every incident.
+
+### 🌟 Core Features (The 4 Pillars)
+
+1. **Automated CCTV Watchtower (YOLOv8)**
+   It is physically impossible for humans to monitor 10,000 city cameras 24/7. Our built-in Computer Vision engine automatically processes live junction feeds to detect accidents, breakdowns, and vehicle density. When an anomaly is spotted, it automatically dispatches an alert into the forecasting engine without human intervention.
+   
+2. **Impact Forecasting Engine (XGBoost/KNN)**
+   The moment an event is logged, the Machine Learning models instantly predict the exact severity and how many minutes the congestion will last. This allows traffic controllers to proactively trigger diversions *before* the gridlock cascades.
+
+3. **Surgical Resource Recommendation Engine**
+   Instead of guessing what to send, the "Response Planner" tells dispatchers exactly what resources to deploy based on the ML severity prediction (e.g., Heavy Tow Truck + Medical Response Team). It also automatically calculates the optimal alternate diversion corridors based on historical traffic flow at that exact hour.
+
+4. **Continuous Learning Loop**
+   Traffic dynamics change constantly. Our system features a "Feedback Loop" where officers on the ground can input the actual clearance time vs the AI's predicted time. The system stores this feedback and automatically retrains its own models, getting smarter and more accurate every single week.
+
+---
 
 ## 🚀 Live Demo (For Judges)
 
-We have deployed a 24/7 live prototype on Hugging Face Spaces for instant evaluation. 
+We have deployed a 24/7 live prototype on Hugging Face Spaces for instant evaluation.
 
-**[Link to Live Dashboard]** *(Replace with your huggingface.co URL after pushing)*
+**[Launch Live Dashboard on Hugging Face](https://huggingface.co/spaces/aynaval2003/namma-route)**
 
-### Local Fallback (If Live Version Fails)
-If the Hugging Face space is down or you prefer to run the prototype locally on your own machine, you can run the built-in demo script. This will launch both the FastAPI backend and the Real-Time Event Simulator:
+> **Important Note on Map Data:** The application uses Mappls (formerly MapmyIndia) for rendering the high-performance dark-mode map tiles. The backend fetches the required API key dynamically from the server environment.
 
+---
+
+## 🛠 System Architecture
+
+```text
+namma-route/
+├── backend/
+│   ├── api.py                 # Core FastAPI server
+│   ├── cv_engine.py           # YOLOv8 Computer Vision module
+│   ├── forecasting.py         # XGBoost & KNN Model training & inference
+│   ├── recommendation.py      # Rule-based resource & diversion logic
+│   └── simulate_stream.py     # Background worker firing real-time events
+├── frontend/
+│   ├── app.js                 # Dynamic dashboard logic & API polling
+│   ├── index.html             # UI Layout (Vanilla CSS/HTML)
+│   └── index.css              # Custom styling (Dark Mode glassmorphism)
+├── data/
+│   ├── raw/                   # Original dataset (Astram events)
+│   ├── processed/             # Cleaned data, pickled ML models, learning logs
+│   └── cctv_samples/          # Simulated video feeds for YOLO testing
+├── Dockerfile                 # Production Docker image definition
+├── start_prod.sh              # Entry point script (launches API + Simulator)
+└── requirements.txt           # Python dependencies
+```
+
+---
+
+## 💻 Local Installation & Deployment
+
+If you prefer to run the system locally on your own machine, follow these steps:
+
+### Prerequisites
+- Python 3.9+
+- A [Mappls (MapmyIndia) API Key](https://about.mappls.com/api/)
+
+### 1. Clone & Install
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+git clone https://github.com/your-username/namma-route.git
+cd namma-route
 
-# 2. Launch the prototype (Server + Simulator)
+# Install all required Python packages (including OpenCV, FastAPI, and YOLO)
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+Create a `.env` file in the root directory and add your API key:
+```env
+MAPPLS_API_KEY=your_actual_api_key_here
+```
+
+### 3. Launch the Prototype
+You can use the built-in demo launcher, which spins up both the **FastAPI Backend Server** and the **Real-Time Event Simulator** concurrently.
+```bash
+chmod +x run_demo.sh
 ./run_demo.sh
 ```
-Then open your browser to **http://localhost:8000/**.
 
-## Architecture
+**Access the Application:**
+Open your browser and navigate to: **http://localhost:8000**
 
-```
-backend/        FastAPI app: data loading, feature pipeline, forecasting model, recommendation engine, learning-log
-frontend/       Lightweight web dashboard (HTML/JS + Leaflet + Chart.js) consuming the API
-data/raw/       Original CSV (Astram event data, anonymized)
-data/processed/ Cleaned/feature-engineered data, trained model artifacts, audit reports
-notebooks/      EDA (optional, not required for the running app)
-README.md
-ASSUMPTIONS.md
-```
+---
 
-## Dataset
+## 🧠 Machine Learning Details
 
-- **Source:** Anonymized Bengaluru traffic-event log from the Astram platform
-- **Size:** ~8,200 rows × 46 columns
-- **Time span:** November 2023 – April 2024
-- **Placed at:** `data/raw/astram_events.csv`
+### Model 1: Severity Classifier (Gradient Boosted Trees)
+- **Task:** Classifies an event as Low, Medium, or High tier impact.
+- **Features:** Event cause, time of day, day of week, requires road closure.
+- **Performance:** 71.9% Accuracy on the historical dataset.
 
-See `data/processed/data_audit.md` for the full data audit report.
+### Model 2: Duration Regressor (XGBoost)
+- **Task:** Predicts the exact minutes required to clear the incident.
+- **Handling Outliers:** The target variable is log-transformed due to the heavy right-tail of prolonged events (like major water-logging or construction).
 
-## Build Progress
+### Model 3: K-Nearest Neighbors (Analog Fallback)
+- **Task:** For highly irregular planned events (like massive political rallies or VIP movements), standard regression often fails. The system falls back to a KNN model using Cosine Similarity to find the 5 most historically similar past events and returns their median clearance time as a highly reliable benchmark.
 
-| Phase | Description | Status |
-|-------|------------|--------|
-| 0 | Scaffolding & Data Audit | ✅ Complete |
-| 1 | Cleaning & Feature Engineering | ✅ Complete |
-| 2 | Impact Forecasting Engine | ✅ Complete |
-| 3 | Resource Recommendation Engine | ✅ Complete |
-| 4 | Backend API | ✅ Complete |
-| 5 | Dashboard Frontend | ✅ Complete |
-| 6 | Real-Time Simulation + Learning Loop | ✅ Complete |
-| 7 | Polish & Demo Readiness | ✅ Complete |
+---
 
-## Advanced Usage
+## 🔒 Production Deployment (Hugging Face / Docker)
 
-If you prefer to run components individually or train models from scratch:
+This application is fully Dockerized for zero-configuration cloud deployment.
 
-```bash
-# Run data audit
-python3 backend/data_audit.py
+To deploy on Hugging Face Spaces:
+1. Create a new **Docker** Space.
+2. Upload this repository directly.
+3. Go to Space Settings -> Variables and secrets.
+4. Add a Secret with the Name: `MAPPLS_API_KEY` and Value: `your_api_key`.
+5. The `Dockerfile` will automatically handle installing Linux dependencies (like `libgl1` for OpenCV), retraining the models to match the container's Python environment, and launching the application on port `7860`.
 
-# Run cleaning & feature engineering
-python3 backend/data_cleaning.py
-
-# Train forecasting models
-python3 backend/forecasting.py
-
-# Run sample forecasts (after training)
-python3 backend/forecasting.py --test
-
-# Run the API manually
-python3 -m uvicorn backend.api:app --port 8000
-```
-
-## Phase 1 Outputs
-
-### Cleaning Operations
-- Event cause normalization: fixed `Debris`→`debris`, merged ultra-rare causes (<5 events) into `others`
-- Datetime parsing: all 6 datetime columns parsed to UTC
-- Coordinate cleaning: zeroed end-coordinates set to NaN, 2 out-of-range rows fixed
-- Missing corridor (20 rows) → `Non-corridor`, missing priority (2 rows) → `High`
-- Boolean conversion for `requires_road_closure`
-
-### Engineered Features
-| Feature | Description |
-|---------|-------------|
-| `hour_of_day` | Hour in IST (0–23) |
-| `day_of_week` | 0=Monday, 6=Sunday |
-| `is_weekend` | Binary flag |
-| `time_period` | morning_rush / midday / evening_rush / night |
-| `duration_to_close_min` | `closed_datetime − start_datetime` in minutes (filtered: >0 and ≤7 days) |
-| `severity_tier` | Low / Medium / High (from priority + duration + road_closure) |
-| `duration_bucket` | quick / moderate / extended / prolonged / unknown |
-| `is_event_driven` | Flag for theme-relevant causes |
-
-### Corridor Geography
-- `corridor_centroids.csv`: 22 corridor centroids (mean lat/lon)
-- `corridor_adjacency.csv`: Top-5 nearest neighbors per corridor (haversine distance)
-
-### EDA Charts (6 total, in `data/processed/eda_charts/`)
-1. Events by cause
-2. Events by hour of day (IST)
-3. Top 15 corridors by event count
-4. Duration-to-close distribution by cause
-5. Severity tier distribution by cause
-6. Event density heatmap (hour × day of week)
-
-## Phase 2 — Forecasting Engine
-
-### Models
-
-| Model | Task | Key Metric | Notes |
-|-------|------|------------|-------|
-| GBT Severity Classifier | Low/Med/High tier | Accuracy 71.9%, F1(w) 0.67 | Trained on all 8,057 rows; `event_cause` and `requires_road_closure` are dominant features |
-| GBT Duration Regressor | Minutes to clear | Median AE 34 min, MAE 366 min | Trained on 2,711 rows with valid durations; log-transformed target. High MAE driven by long-tail causes (water_logging, construction) |
-| k-NN Analog Finder | Fallback for rare planned events | Cosine similarity | Returns 5 most similar past events for procession, public_event, vip_movement, protest |
-
-### Sample Forecast (procession on Bellary Road, Sunday morning, road closure)
-```
-Severity: High (99.1% confidence)
-Duration: 13.2 min (model) / 34.1 min median (analog)
-Method: knn_analog_fallback
-Analog range: 2.9–144.1 min from 5 similar past events
-```
-
-## Phase 3 — Resource Recommendation Engine
-
-### Architecture
-- **35 rule entries** in a documented lookup table: `(event_cause, severity_tier, requires_road_closure)` → officer range, barricade range, action checklist
-- **Diversion engine** using corridor adjacency table — suggests 2–3 nearest alternate corridors with hour-aware rationale
-- **Explicit disclaimer** on every recommendation: this is heuristic-based, not learned from historical resource data
-
-### Sample Recommendation (procession on Bellary Road, Sunday, road closure)
-```
-👮 Officers: 8–15       🚧 Barriers: 10–20 units
-✅ Actions: Full route closure, officers at every junction, escort with patrol
-            vehicles, issue traffic advisory, phased reopening
-🔀 Diversions: CBD 2 (3.8 km, 89% fewer events at 09:00),
-               ORR North 2 (4.1 km, 76% fewer events at 09:00)
-```
-
-## Phase 4 — Backend API
-
-### Running the API
-```bash
-python3 -m uvicorn backend.api:app --port 8000
-# Swagger docs at http://localhost:8000/docs
-```
-
-### Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| GET | `/events` | Query historical events (filterable by corridor, cause, severity, date) |
-| GET | `/events/summary` | Aggregated stats for dashboard |
-| GET | `/hotspots` | Grouped event counts by corridor/zone/station |
-| GET | `/hotspots/geo` | Individual event points for map markers |
-| GET | `/corridors` | Corridor centroids + adjacency data |
-| GET | `/eda` | EDA chart listing + static file serving |
-| POST | `/forecast` | Severity + duration forecast with resource recommendations |
-| POST | `/feedback` | Log actual outcomes for learning loop |
-| GET | `/feedback/log` | Retrieve learning log entries |
-
-## Tech Stack
-
-- **Backend:** Python, FastAPI, scikit-learn, pandas
-- **Frontend:** HTML/JS, Leaflet.js, Chart.js
-- **ML:** Gradient Boosted Trees (scikit-learn)
-- **No paid APIs or cloud services required**
+---
+*Developed for Flipkart Gridlock 2.0*
