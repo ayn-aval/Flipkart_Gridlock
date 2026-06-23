@@ -125,7 +125,7 @@ Instead of forcing human operators to monitor 10,000 city cameras, our integrate
 
 ### 2. Impact Forecasting Engine (Machine Learning)
 When an event occurs, the system instantly predicts the fallout using models trained on historical Bengaluru traffic events:
-- **Severity Classifier (Gradient Boosted Trees):** Achieves **71.9% accuracy** in predicting Low/Medium/High severity tiers based on event cause, time of day, and road closures.
+- **Severity Classifier (Gradient Boosted Trees):** Achieves **91.4% accuracy** (5-fold CV: 91.0% ± 0.7%) in predicting High/Low severity tiers based on event cause, time of day, and road closures.
 - **Duration Regressor (XGBoost):** Predicts the exact minutes required to clear the incident. The target variable is log-transformed during training to account for the heavy right-tail distribution of prolonged traffic snarls.
 - **Analog Fallback (K-Nearest Neighbors):** For highly irregular planned events (e.g., massive political rallies), standard regression underperforms. The system falls back to a KNN model using Cosine Similarity to find the 5 most historically similar past events and returns their median clearance time.
 
