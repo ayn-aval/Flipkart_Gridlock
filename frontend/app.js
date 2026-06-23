@@ -811,7 +811,10 @@ function renderForecastResults(result) {
   container.innerHTML = `
     <!-- Severity & Duration -->
     <div class="result-section">
-      <div class="result-section-title"><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> AI Assessment</div>
+      <div class="result-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span><i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> AI Assessment</span>
+        <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-family: monospace; letter-spacing: 1px;">ID: ${data.event_id}</span>
+      </div>
       
       <div class="ai-assessment-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
          <div class="severity-badge ${severityClass}">
