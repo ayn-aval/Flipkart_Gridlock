@@ -407,6 +407,37 @@
       </div>
     </div>
 
+    <div class="card mt-12" style="max-width: 800px; margin-left: auto; margin-right: auto; margin-bottom: 2rem;">
+      <div class="card-header">
+        <h3 class="card-title"><i data-lucide="edit-3"></i> Post-Event Data Entry (Learning Loop)</h3>
+        <p class="text-sm text-dim">Log actual outcomes from the ground to retrain the ML model.</p>
+      </div>
+      <form id="feedback-form" onsubmit="submitFeedback(event)" style="padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label>Event ID (e.g. EVT-123)</label>
+            <input type="text" id="fb-event-id" class="form-control" required placeholder="Event ID">
+          </div>
+          <div>
+            <label>Actual Severity</label>
+            <select id="fb-severity" class="form-control" required>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label>Actual Clearance Duration (minutes)</label>
+          <input type="number" id="fb-duration" class="form-control" required min="1" placeholder="e.g. 45">
+        </div>
+        <button type="submit" class="btn btn-primary" id="fb-submit-btn" style="width: 100%;">
+          <i data-lucide="upload-cloud"></i> Submit to Learning Log
+        </button>
+        <div id="fb-message" style="margin-top: 1rem; text-align: center; font-size: 0.9rem; display: none;"></div>
+      </form>
+    </div>
+
     <div class="charts-grid mt-12">
       <!-- Scatter Plot: Predicted vs Actual Duration -->
       <div class="card">

@@ -1017,7 +1017,50 @@ document.getElementById('sim-day').addEventListener('change', function () {
   const day = parseInt(this.value);
   document.getElementById('sim-weekend').value = (day >= 5) ? '1' : '0';
 });
+// ─── Post-Event Feedback Submission ──────────────────────────────────────────
 
+window.submitFeedback = async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('fb-submit-btn');
+  const msg = document.getElementById('fb-message');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;height:16px;"></i> Submitting...';
+  if (window.lucide) lucide.createIcons();
+  
+  const payload = {
+    event_id: document.getElementById('fb-event-id').value,
+    actual_severity: document.getElementById('fb-severity').value,
+    actual_duration_min: parseFloat(document.getElementById('fb-duration').value),
+    feedback_notes: ""
+  };
+  
+  try {
+    await apiFetch('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    msg.textContent = "Feedback successfully logged! Model metrics updated.";
+    msg.style.color = "var(--severity-low)";
+    msg.style.display = "block";
+    document.getElementById('feedback-form').reset();
+    
+    // Refresh the learning loop data instantly
+    loadLearningLoop();
+    
+    setTimeout(() => { msg.style.display = "none"; }, 3000);
+  } catch (err) {
+    msg.textContent = "Error: " + err.message;
+    msg.style.color = "var(--severity-high)";
+    msg.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="upload-cloud"></i> Submit to Learning Log';
+    if (window.lucide) lucide.createIcons();
+  }
+};
 
 // ─── CCTV AI Logic ─────────────────────────────────────────────────────────────
 
