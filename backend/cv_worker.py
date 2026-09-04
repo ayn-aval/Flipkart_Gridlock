@@ -20,6 +20,7 @@ by the parent process, and the whole point is to keep those out of it. The impor
 happens inside `run_analysis`, which only ever executes in the child.
 """
 
+import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from typing import Optional
 
@@ -45,9 +46,18 @@ def warm_up() -> bool:
 
 
 def get_pool() -> ProcessPoolExecutor:
+    """One worker, started with 'spawn'.
+
+    The start method must be explicit. Linux defaults to 'fork', which would hand the
+    child a copy of the parent's address space — including xgboost's already-initialised
+    OpenMP runtime — and forking from a thread with an active OpenMP pool is the exact
+    condition that deadlocks. macOS already defaults to 'spawn', so relying on the
+    default would have made this work in local testing and hang in the Linux container.
+    'spawn' gives the child a clean interpreter that imports torch first and nothing else.
+    """
     global _pool
     if _pool is None:
-        _pool = ProcessPoolExecutor(max_workers=1)
+        _pool = ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"))
     return _pool
 
 
