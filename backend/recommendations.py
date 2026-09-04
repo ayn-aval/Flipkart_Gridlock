@@ -560,36 +560,322 @@ RESOURCE_RULES = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  HIGH / MEDIUM SEVERITY WITHOUT A ROAD CLOSURE
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#  The table above only defined High-severity rules with requires_road_closure=True.
+#  When a dispatcher forecast a High-severity event and selected "road closure: No",
+#  the lookup fell through to the closure variant and printed a plan whose first
+#  instruction was to close the road — contradicting the input it had just been given,
+#  while the response still reported road_closure_used: False.
+#
+#  These entries close that gap. They carry High-severity resourcing (a major incident
+#  still needs the manpower) but manage it through lane control and diversion signage
+#  rather than a full closure. Medium-tier gaps are filled for the same reason: the
+#  severity model is now three-class, so Medium is a routine output rather than an
+#  unreachable state.
+
+RESOURCE_RULES.update({
+    ("vehicle_breakdown", "High", False): {
+        "officers_min": 3, "officers_max": 5,
+        "barricades_min": 5, "barricades_max": 8,
+        "actions": [
+            "Establish a coned lane taper upstream of the breakdown",
+            "Keep at least one lane running in each direction",
+            "Escalate tow request to priority dispatch",
+            "Station an officer upstream to meter approaching traffic",
+            "Monitor the queue for spillback into the previous junction",
+        ],
+        "basis": "Major Impact without closure: heavy or long-duration breakdown held "
+                 "on a live carriageway. Resourced as High, managed by lane control.",
+    },
+    ("accident", "High", False): {
+        "officers_min": 4, "officers_max": 6,
+        "barricades_min": 6, "barricades_max": 10,
+        "actions": [
+            "Secure the scene within a coned perimeter, keeping a running lane open",
+            "Coordinate ambulance and medical response",
+            "Meter traffic past the scene with an officer at each end",
+            "Document and photograph the scene for investigation",
+            "Alert upstream junctions to expect delay",
+            "File FIR and hand over to the investigating officer",
+        ],
+        "basis": "Major Impact without closure: serious collision contained to part of "
+                 "the carriageway. Full closure not requested.",
+    },
+    ("construction", "High", False): {
+        "officers_min": 3, "officers_max": 6,
+        "barricades_min": 10, "barricades_max": 16,
+        "actions": [
+            "Verify the permit covers the occupied lanes and hours",
+            "Enforce a continuous barricaded work zone with tapered approach",
+            "Require reflective markers and night lighting from the contractor",
+            "Station officers at the work-zone entry and exit",
+            "Restrict heavy-vehicle movement past the site at peak hours",
+            "Review the schedule with the contractor to compress peak-hour occupancy",
+        ],
+        "basis": "Major Impact without closure: sustained works occupying lanes on a "
+                 "corridor. Expect a multi-hour to multi-day presence.",
+    },
+    ("public_event", "High", False): {
+        "officers_min": 8, "officers_max": 18,
+        "barricades_min": 12, "barricades_max": 25,
+        "actions": [
+            "Pre-position officers on every approach to the venue",
+            "Crowd-control barriers along the pedestrian edge, roadway kept open",
+            "Enforce parking restrictions for 500 m around the venue",
+            "Agree staggered entry and exit timings with organisers",
+            "Hold a contingency closure plan ready if crowd size exceeds estimate",
+            "Issue a public traffic advisory ahead of the event",
+            "Plan phased dispersal management",
+        ],
+        "basis": "Major Impact without closure: large gathering managed alongside live "
+                 "traffic. Retain a closure contingency.",
+    },
+    ("procession", "High", False): {
+        "officers_min": 6, "officers_max": 12,
+        "barricades_min": 8, "barricades_max": 15,
+        "actions": [
+            "Escort with patrol vehicles front and rear",
+            "Run a rolling lane closure that moves with the procession",
+            "Hold intersecting traffic at junctions only as the procession passes",
+            "Reopen each segment immediately behind the tail",
+            "Keep organisers to the agreed route and pace",
+            "Alert every corridor intersecting the route",
+        ],
+        "basis": "Major Impact without closure: large procession handled by rolling "
+                 "lane control rather than a static full closure.",
+    },
+    ("vip_movement", "Medium", False): {
+        "officers_min": 6, "officers_max": 10,
+        "barricades_min": 6, "barricades_max": 12,
+        "actions": [
+            "Pre-clear and hold the route ahead of the movement",
+            "Officer at every junction on the route",
+            "Green-wave signal coordination along the corridor",
+            "Coordinate timing with the security detail",
+            "Release held traffic immediately after passage",
+        ],
+        "basis": "Moderate Impact: VIP transit with signal priority but no closure. "
+                 "80% of VIP movements historically need closure, so the baseline stays high.",
+    },
+    ("vip_movement", "High", False): {
+        "officers_min": 10, "officers_max": 20,
+        "barricades_min": 10, "barricades_max": 20,
+        "actions": [
+            "Pre-clear the route and hold all intersecting movements",
+            "Officer at every junction, with supervisors at major intersections",
+            "Green-wave signal control for the length of the corridor",
+            "Coordinate with the security detail on exact timing",
+            "Keep a full-closure contingency ready on the security team's call",
+            "Ambulance and fire service on standby",
+            "Phased release of held traffic after passage",
+        ],
+        "basis": "Major Impact without closure: high-profile movement run under signal "
+                 "priority and rolling holds instead of a declared closure.",
+    },
+    ("protest", "Medium", False): {
+        "officers_min": 6, "officers_max": 12,
+        "barricades_min": 10, "barricades_max": 18,
+        "actions": [
+            "Barricade the demonstration to its permitted footprint",
+            "Keep at least one carriageway running past the site",
+            "Maintain a visible but non-confrontational officer line",
+            "Liaise with organisers on duration and dispersal",
+            "Rapid response unit on standby",
+            "Guarantee an emergency-vehicle corridor at all times",
+        ],
+        "basis": "Moderate Impact: permitted demonstration of moderate size, road kept open.",
+    },
+    ("protest", "High", False): {
+        "officers_min": 10, "officers_max": 25,
+        "barricades_min": 15, "barricades_max": 28,
+        "actions": [
+            "Full perimeter barricading of the protest footprint",
+            "Hold one carriageway open with officer-metered flow",
+            "Deploy rapid response unit to the site",
+            "Entry and exit control at the demonstration perimeter",
+            "Intelligence liaison for continuous situation assessment",
+            "Ambulance on standby; guaranteed emergency access lane",
+            "Prepare a closure and diversion plan to execute if it escalates",
+            "Monitor via CCTV and document throughout",
+        ],
+        "basis": "Major Impact without closure: large demonstration contained beside "
+                 "live traffic. Escalation to full closure is the likely next step.",
+    },
+    ("water_logging", "High", False): {
+        "officers_min": 3, "officers_max": 6,
+        "barricades_min": 8, "barricades_max": 12,
+        "actions": [
+            "Barricade the flooded lanes and mark the water edge clearly",
+            "Direct all traffic to the highest-ground lanes",
+            "Request BBMP and fire service pumping on priority",
+            "Post depth warnings on the approach",
+            "Watch for stalled vehicles and recover them promptly",
+            "Escalate to full closure if the depth rises further",
+        ],
+        "basis": "Major Impact without closure: deep waterlogging with a passable "
+                 "high-ground lane still available.",
+    },
+    ("tree_fall", "Medium", False): {
+        "officers_min": 2, "officers_max": 3,
+        "barricades_min": 5, "barricades_max": 8,
+        "actions": [
+            "Barricade the fallen section and taper traffic around it",
+            "Request a BBMP tree-clearing crew",
+            "Check for and report downed power lines to BESCOM",
+            "Clear residual debris once the trunk is removed",
+        ],
+        "basis": "Moderate Impact: substantial fall blocking a lane but leaving the "
+                 "carriageway passable.",
+    },
+    ("tree_fall", "High", False): {
+        "officers_min": 3, "officers_max": 5,
+        "barricades_min": 6, "barricades_max": 10,
+        "actions": [
+            "Barricade the full extent of the fall and meter traffic past it",
+            "Request BBMP and fire service for priority removal",
+            "Isolate any downed power lines with BESCOM before clearing",
+            "Check for trapped vehicles or persons beneath the canopy",
+            "Sweep the carriageway for debris before restoring normal flow",
+        ],
+        "basis": "Major Impact without closure: large fall requiring heavy clearance "
+                 "with one lane held open.",
+    },
+    ("road_conditions", "Medium", False): {
+        "officers_min": 1, "officers_max": 3,
+        "barricades_min": 4, "barricades_max": 6,
+        "actions": [
+            "Barricade and sign the damaged stretch",
+            "Divert traffic to the sound lanes",
+            "Raise a BBMP repair request with photographs",
+            "Re-inspect at shift change for deterioration",
+        ],
+        "basis": "Moderate Impact: road surface defect affecting a lane.",
+    },
+    ("road_conditions", "High", False): {
+        "officers_min": 2, "officers_max": 4,
+        "barricades_min": 6, "barricades_max": 10,
+        "actions": [
+            "Barricade the damaged section over its full length",
+            "Implement lane diversion with advance signage",
+            "Escalate to BBMP as an emergency repair",
+            "Night-time illumination of the hazard",
+            "Monitor for further collapse and escalate if it worsens",
+        ],
+        "basis": "Major Impact without closure: significant surface failure managed by "
+                 "lane diversion.",
+    },
+    ("pot_holes", "Medium", False): {
+        "officers_min": 1, "officers_max": 2,
+        "barricades_min": 3, "barricades_max": 5,
+        "actions": [
+            "Cone and mark the pothole cluster",
+            "Raise a BBMP repair request with location and photographs",
+            "Night-time reflective marking",
+        ],
+        "basis": "Moderate Impact: pothole cluster presenting a real hazard to two-wheelers.",
+    },
+    ("pot_holes", "High", False): {
+        "officers_min": 1, "officers_max": 3,
+        "barricades_min": 4, "barricades_max": 7,
+        "actions": [
+            "Barricade the affected lane over the damaged length",
+            "Direct traffic to the sound lanes",
+            "Priority BBMP repair request",
+            "Illuminate the hazard for night visibility",
+        ],
+        "basis": "Major Impact without closure: severe surface damage requiring a lane "
+                 "to be taken out of use.",
+    },
+    ("congestion", "Medium", False): {
+        "officers_min": 2, "officers_max": 4,
+        "barricades_min": 0, "barricades_max": 2,
+        "actions": [
+            "Manual signal control at the worst junction",
+            "Clear any obstruction seeding the queue",
+            "Restrict conflicting turns during the peak",
+            "Alert the upstream junction to meter inflow",
+        ],
+        "basis": "Moderate Impact: sustained queueing on a corridor.",
+    },
+    ("debris", "Medium", False): {
+        "officers_min": 1, "officers_max": 3,
+        "barricades_min": 3, "barricades_max": 6,
+        "actions": [
+            "Barricade the debris and taper traffic around it",
+            "Summon a clearing crew",
+            "Verify no hazardous or flammable material is involved",
+        ],
+        "basis": "Moderate Impact: debris occupying a lane.",
+    },
+    ("debris", "High", False): {
+        "officers_min": 2, "officers_max": 4,
+        "barricades_min": 4, "barricades_max": 8,
+        "actions": [
+            "Barricade the full spill area and meter traffic past it",
+            "Request heavy equipment for clearance",
+            "Verify no hazardous material before crews approach",
+            "Sweep the surface before restoring normal flow",
+        ],
+        "basis": "Major Impact without closure: large spill or load shed, cleared with "
+                 "one lane held open.",
+    },
+    ("others", "High", False): {
+        "officers_min": 3, "officers_max": 5,
+        "barricades_min": 5, "barricades_max": 8,
+        "actions": [
+            "Assess on site and report the specifics to the control room",
+            "Barricade the affected area and maintain a running lane",
+            "Coordinate with the relevant department",
+            "Escalate to a closure only if on-ground assessment requires it",
+        ],
+        "basis": "Major Impact without closure: miscellaneous major event managed by "
+                 "lane control.",
+    },
+})
+
+
+SEVERITY_ORDER = ["Low", "Medium", "High"]
+
+
 def _lookup_rule(event_cause: str, severity_tier: str, requires_road_closure: bool) -> dict:
     """Look up the best matching rule from the table.
     
     Tries exact match first, then falls back to less specific matches.
     """
-    # Exact match
+    severity_tier = severity_tier if severity_tier in SEVERITY_ORDER else "Low"
+    requires_road_closure = bool(requires_road_closure)
+
+    # 1. Exact match on cause, severity and closure.
     key = (event_cause, severity_tier, requires_road_closure)
     if key in RESOURCE_RULES:
         return RESOURCE_RULES[key]
-    
-    # Try without road closure specificity
-    for rc in [True, False]:
-        key = (event_cause, severity_tier, rc)
-        if key in RESOURCE_RULES:
-            return RESOURCE_RULES[key]
-    
-    # Try with just the cause (any severity, prefer high)
-    for sev in ["High", "Medium", "Low"]:
-        for rc in [True, False]:
+
+    # 2. Same cause and severity, other closure state. Every (cause, severity) pair
+    #    now has an entry for both closure states, so this is a safety net rather
+    #    than the routine path it used to be.
+    key = (event_cause, severity_tier, not requires_road_closure)
+    if key in RESOURCE_RULES:
+        return RESOURCE_RULES[key]
+
+    # 3. Same cause, next severity DOWN. Never up: the old loop tried High first and
+    #    handed a Medium event the full High-severity closure plan.
+    rank = SEVERITY_ORDER.index(severity_tier)
+    for sev in SEVERITY_ORDER[:rank][::-1]:
+        for rc in (requires_road_closure, not requires_road_closure):
             key = (event_cause, sev, rc)
             if key in RESOURCE_RULES:
                 return RESOURCE_RULES[key]
-    
-    # Ultimate fallback
-    if requires_road_closure:
-        return RESOURCE_RULES[("others", "High", True)]
-    elif severity_tier == "Medium":
-        return RESOURCE_RULES[("others", "Medium", False)]
-    else:
-        return RESOURCE_RULES[("others", "Low", False)]
+
+    # 4. Generic rule at the same severity.
+    for rc in (requires_road_closure, not requires_road_closure):
+        key = ("others", severity_tier, rc)
+        if key in RESOURCE_RULES:
+            return RESOURCE_RULES[key]
+
+    return RESOURCE_RULES[("others", "Low", False)]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -626,16 +912,15 @@ class DiversionEngine:
             }]
         
         # Get nearest corridors
-        neighbors = self.adjacency[self.adjacency["corridor"] == corridor].head(top_n)
+        neighbors = self.adjacency[
+            (self.adjacency["corridor"] == corridor)
+            & (self.adjacency["neighbor_corridor"] != "Non-corridor")
+        ].sort_values("rank").head(top_n)
         
         suggestions = []
         for _, row in neighbors.iterrows():
             neighbor = row["neighbor_corridor"]
             distance = row["distance_km"]
-            
-            # Skip Non-corridor as a diversion target
-            if neighbor == "Non-corridor":
-                continue
             
             # Build rationale
             rationale_parts = [f"Nearest alternate route (approx. {distance:.1f} km away)"]

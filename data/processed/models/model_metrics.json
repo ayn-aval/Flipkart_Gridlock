@@ -1,21 +1,77 @@
 {
+  "primary": {
+    "model": "Hierarchical empirical (cause x corridor -> cause x closure -> cause -> global)",
+    "role": "primary estimator for BOTH duration and severity",
+    "mae_min": 84.9,
+    "median_ae_min": 29.0,
+    "interval_coverage_p10_p90": 0.768,
+    "interval_nominal": 0.8,
+    "baseline_global_median_min": 46.0,
+    "baseline_mae_min": 87.6,
+    "baseline_median_ae_min": 29.2,
+    "severity_accuracy": 0.5149,
+    "severity_f1_weighted": 0.4967,
+    "severity_majority_baseline": 0.4,
+    "severity_lift_over_baseline": 0.1149,
+    "severity_mean_confidence": 0.505,
+    "train_size": 2018,
+    "test_size": 505,
+    "honest_note": "Severity accuracy is modest and only a few points above the majority-class baseline. That is the real signal in this dataset once the corridor-membership leak is removed; the previous 91.4% came from predicting an administrative flag using the coordinates that defined it. Confidence is reported as the observed class frequency in the matched stratum, so it can be read at face value."
+  },
   "severity": {
-    "model": "XGBClassifier",
-    "accuracy": 0.9138,
-    "f1_weighted": 0.9117,
-    "cv_accuracy_mean": 0.9098,
-    "cv_accuracy_std": 0.0073,
-    "train_size": 6445,
-    "test_size": 1612,
-    "classes": [
-      "High",
-      "Low"
-    ]
+    "model": "Hierarchical empirical frequency",
+    "accuracy": 0.5149,
+    "majority_class_baseline": 0.4,
+    "lift_over_baseline": 0.1149,
+    "f1_weighted": 0.4967,
+    "mean_confidence": 0.505
   },
   "duration": {
-    "model": "XGBRegressor",
-    "mae_min": 72.7,
-    "median_ae_min": 30.5,
-    "r2_score": 0.0832
+    "model": "Hierarchical empirical (cause x corridor -> cause x closure -> cause -> global)",
+    "role": "primary estimator for BOTH duration and severity",
+    "mae_min": 84.9,
+    "median_ae_min": 29.0,
+    "interval_coverage_p10_p90": 0.768,
+    "interval_nominal": 0.8,
+    "baseline_global_median_min": 46.0,
+    "baseline_mae_min": 87.6,
+    "baseline_median_ae_min": 29.2,
+    "severity_accuracy": 0.5149,
+    "severity_f1_weighted": 0.4967,
+    "severity_majority_baseline": 0.4,
+    "severity_lift_over_baseline": 0.1149,
+    "severity_mean_confidence": 0.505,
+    "train_size": 2018,
+    "test_size": 505,
+    "honest_note": "Severity accuracy is modest and only a few points above the majority-class baseline. That is the real signal in this dataset once the corridor-membership leak is removed; the previous 91.4% came from predicting an administrative flag using the coordinates that defined it. Confidence is reported as the observed class frequency in the matched stratum, so it can be read at face value."
+  },
+  "severity_classifier_crosscheck": {
+    "model": "XGBClassifier (3-class)",
+    "target": "outcome-derived severity tier (closure or >90min = High, 30-90 = Medium, <30 = Low)",
+    "accuracy": 0.4634,
+    "majority_class_baseline": 0.3999,
+    "lift_over_baseline": 0.0634,
+    "f1_weighted": 0.4639,
+    "f1_macro": 0.4675,
+    "cv_accuracy_mean": 0.4891,
+    "cv_accuracy_std": 0.0192,
+    "train_size": 2018,
+    "test_size": 505,
+    "classes": [
+      "High",
+      "Low",
+      "Medium"
+    ],
+    "honest_note": "Accuracy is modest and close to the majority-class baseline. That is the true signal available in this dataset once the corridor-membership leak is removed; the previous 91.4% was an artefact of predicting an administrative flag from the coordinates that defined it."
+  },
+  "duration_model_crosscheck": {
+    "model": "XGBRegressor (log1p target)",
+    "role": "cross-check only; the hierarchical empirical estimator is primary",
+    "mae_min": 70.2,
+    "median_ae_min": 30.6,
+    "r2_score": 0.1279,
+    "baseline_mae_min": 74.9,
+    "beats_baseline": true,
+    "honest_note": "R2 near zero is the correct reading of this target: duration_to_close_min measures administrative ticket closure, which for potholes and waterlogging can trail the actual clearance by days."
   }
 }

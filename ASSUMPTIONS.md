@@ -1,145 +1,292 @@
 # Assumptions & Limitations
 
-This document tracks every assumption, heuristic, and data limitation relevant to the prototype. Updated after each phase.
+Every assumption, heuristic and data limitation in the prototype. This document
+describes **what the code currently does**. Where an earlier version of the system
+differed, that is called out explicitly, because the gap between this file and the
+code was itself one of the project's problems.
 
 ---
 
-## Phase 0 — Data Audit
+## 0. The target-leakage correction
 
-### Dataset Limitations (Verified)
+The single most important thing on this page.
 
-1. **No `end_datetime` for most rows:** Only a handful of events have `end_datetime` populated. We use `(closed_datetime − start_datetime)` as a proxy for "time-to-clear" / event duration. This proxy conflates actual event duration with reporting/administrative delay.
+### What was wrong
 
-2. **No ground-truth resource data:** The dataset contains **no fields** for:
-   - Number of police officers deployed
-   - Number of barricades placed
-   - Diversion routes actually used
-   - Manpower cost or availability
-   
-   Any resource recommendations (Phase 3) will be built as a **transparent rule/heuristic layer**, not as something "learned" from data that doesn't exist. This will be clearly labeled in the demo.
+`severity_tier` was assigned as `df["severity_tier"] = df["priority"]`, and the
+severity classifier reported **91.4% accuracy** against it.
 
-3. **Diurnal reporting bias:** Most logged events start between 7pm–8am (IST), with very few between 10am–5pm. This likely reflects patrol/reporting patterns (shift changes, night patrol schedules), **not** actual incident-rate patterns. We will not claim "traffic is safest at noon."
+`priority` is not a measure of impact. It is an administrative flag:
 
-4. **Small planned-event subset:** The event-driven causes most relevant to the theme (`public_event`, `procession`, `vip_movement`, `protest`, `construction`) represent a small fraction of the total dataset (~670 rows out of ~8,200). Model generalization from this subset will be limited — we use explicit fallback strategies (k-NN analog lookup) rather than claiming strong predictive power.
+| | High | Low |
+| :--- | ---: | ---: |
+| On one of the 21 named corridors | 4,967 | 6 |
+| Non-corridor | 7 | 3,077 |
 
-5. **Zone data is sparse:** The `zone` column is only populated for ~3,400 of ~8,200 rows. We will impute or work around this.
+"On a named corridor → High" is correct for 8,044 of 8,057 rows — **99.84%**. The
+model was learning to answer *"is this on a main road?"*, which the dispatcher knows
+before opening the app.
 
-6. **Junction data is sparse:** The `junction` column is only populated for ~2,500 rows. We will use lat/lon for geographic analysis where junction is missing.
+The code did try to prevent this, dropping `corridor` from the feature set with the
+comment *"to prevent data leakage, as it administratively dictates Priority"*. The
+reasoning was right and the fix did not work, because `latitude`, `longitude`,
+`junction` and `police_station` remained. With 7,162 distinct coordinate pairs across
+8,057 rows, the trees simply partition space and reconstruct the corridor boundaries.
 
-7. **Anonymization:** Event IDs, user IDs, vehicle numbers, and some address details are anonymized. This doesn't affect our modeling but means we can't cross-reference with external systems.
+| Feature set | Accuracy |
+| :--- | ---: |
+| Majority-class baseline | 0.6174 |
+| As shipped (the reported 91%) | 0.9299 |
+| Without text | 0.9398 |
+| Description text only | 0.6414 |
+| **Without lat/lon/junction/police_station** | **0.6458** |
+| **Cause + time + closure only** | **0.6402** |
 
-### Assumptions Made
+A second consequence: `ForecastRequest` had no latitude or longitude field, so every
+live call fell back to the city centre. The feature carrying nearly all the model's
+signal was frozen at a constant, and a sweep of all 2,112 form combinations returned
+**High for every single one**.
 
-1. **UTC timestamps:** All datetime columns appear to be in UTC. Bengaluru is UTC+5:30. We will convert to IST for all user-facing displays and hour-of-day features.
+### What it is now
 
-2. **`requires_road_closure` as boolean:** Treated as a binary indicator. True = road closure needed, False = not needed.
+```
+High    — required a road closure, OR took more than 90 minutes to clear
+Medium  — cleared in 30-90 minutes, no closure
+Low     — cleared in under 30 minutes, no closure
+```
 
-3. **Corridor centroids:** We assume that computing mean(lat, lon) per corridor gives a reasonable centroid for adjacency calculations. This is a simplification — corridors are linear, not circular.
+Defined in `data_cleaning.engineer_severity_tier`. Thresholds are
+`SEVERITY_MEDIUM_MIN = 30` and `SEVERITY_HIGH_MIN = 90`.
 
----
+Consequences, accepted deliberately:
 
-## Phase 1 — Cleaning & Feature Engineering
+1. **Only outcome-bearing rows can be labelled.** 2,523 of 8,057 (31%). Both models
+   train on that subset. The remaining 5,534 appear in the dashboard as "no measured
+   outcome" and are excluded from training. Training a classifier on 8,057 rows of a
+   label that was not a label is not a better trade.
+2. **`requires_road_closure` cannot be a severity feature**, because it is part of
+   the label. `forecasting.SEVERITY_NUMERICAL_FEATURES` excludes it. The duration
+   model still uses it — there it is a legitimate predictor.
+3. **Geography is now an honest feature.** Corridor median durations range from 32 to
+   78 minutes, which is real signal about clearance time rather than a restatement of
+   the label. `evaluate_metrics.py` re-runs the ablation on every invocation and fails
+   loudly if removing geography ever costs more than 0.20 accuracy again.
 
-### Cleaning Decisions
-
-1. **Event cause normalization:** `Debris` (12 rows) merged with `debris` (1 row) → `debris` (13 rows). `test_demo` (3 rows) and `fog_low_visibility` (2 rows) merged into `others` as they had fewer than 5 occurrences and aren't actionable for the theme.
-
-2. **Duration outlier filter:** Duration-to-close values are capped at 7 days (10,080 min). Records exceeding this are likely stale administrative closures (e.g., a pothole event that stayed "active" for weeks before bulk-close). The median with this filter is ~52 min, which aligns better with operational reality.
-
-3. **Coordinate cleaning:** 2 rows had `endlatitude` values around 59.86 and `endlongitude` around 62.7 — clearly not in Bengaluru (lat ~12.8-13.3, lon ~77.3-77.8). These were set to NaN. Additionally, `endlatitude`/`endlongitude` == 0 (used as missing marker) was converted to NaN.
-
-4. **IST time features:** All hour/day features are derived from IST (UTC+5:30), not UTC, since user-facing displays and operational decisions are in local time.
-
-### Severity Tier Logic
-
-The severity tier is a synthetic label derived from available data:
-- **High:** priority=High AND (duration > 120 min OR requires_road_closure=True)
-- **Medium:** priority=High AND 0 < duration ≤ 120 min, OR priority=Low AND duration > 60 min
-- **Low:** everything else (including events with unknown duration)
-
-This is a heuristic — not ground truth. Real severity depends on factors not in the data (road width, traffic volume, number of affected lanes, proximity to hospitals/schools, etc.).
-
-### Corridor Adjacency
-
-- Adjacency is computed using haversine distance between corridor centroids.
-- Top 5 nearest neighbors stored per corridor.
-- This is a simplification: corridors are road segments, not points. Two corridors might be geographically close by centroid but not connected by road. We accept this for the prototype.
-
----
-
-## Phase 2 — Impact Forecasting Engine
-
-### Model Choice Rationale
-
-**Gradient Boosted Trees (GBT)** chosen over logistic/linear regression because:
-- 8K rows is comfortable for GBT (not so small that it overfits, not so large that it's slow)
-- Severity depends on non-linear interactions (e.g., construction + road_closure behaves differently from construction alone)
-- GBT provides feature importances for explainability
-- Handles mixed categorical/numerical features well via the preprocessing pipeline
-
-### Honest Metric Interpretation
-
-1. **Severity Classifier (71.9% accuracy):** This is a three-class problem with imbalanced classes (Low: 5,767 / Medium: 1,810 / High: 596). The model beats naive majority-class baseline (70.5%) modestly. The F1 for the High class is lower because it's the minority class. For a hackathon prototype this is acceptable — the model's output should be presented as a "suggested tier" not a definitive classification.
-
-2. **Duration Regressor (Median AE 34 min, MAE 366 min, R² ≈ 0):**
-   - The **Median AE of 34 min** is operationally useful — for the median event, the prediction is off by about half an hour.
-   - The **MAE of 366 min** and **R² near zero** are driven by the extreme right tail. Events like pot_holes and water_logging can stay "open" for days (administrative delay), creating massive residuals that dominate MAE/R².
-   - Per-cause, the model works well for vehicle_breakdown (MAE 31 min) and accident (MAE 41 min) which have tighter duration distributions. It struggles with construction, water_logging, and pot_holes which have highly variable durations due to the nature of these issues and administrative close delays.
-   - **We report these metrics honestly.** We do not claim high accuracy for duration prediction.
-
-3. **k-NN Fallback for Rare Planned Events:**
-   - Procession (72 rows, only 13 with duration), public_event (84 rows, 0 with duration), vip_movement (20 rows, 0 with duration), protest (15 rows, 2 with duration) — these are too sparse for reliable model predictions.
-   - Instead of fabricating confidence, we surface the 5 most similar historical events and let the user see the range of outcomes. The model's point prediction is still shown but explicitly labeled as "rough estimate."
-   - This is labeled `knn_analog_fallback` in the API response.
-
-### Features Used
-
-- `event_cause`, `corridor`, `time_period` (categorical, one-hot encoded)
-- `hour_of_day`, `day_of_week`, `is_weekend`, `requires_road_closure` (numerical, scaled)
-- `veh_type` (optional categorical — filled with "none" for non-vehicle events)
-- `zone` was excluded because it's missing for 58% of rows and would reduce the usable training set significantly.
-
-### What the Model Does NOT Know
-
-The model has no information about:
-- Actual traffic volume at the time of the event
-- Road geometry (number of lanes, width, alternative paths)
-- Weather conditions
-- Size/scale of planned events (expected crowd size, VIP security level)
-- Historical resource deployment outcomes
-
-These gaps are acceptable for a prototype that demonstrates the concept.
+Current performance: **51.5%** accuracy against a **40.0%** baseline. Modest, real,
+and reported next to the baseline everywhere it appears.
 
 ---
 
-## Phase 3 — Resource Recommendation Engine
+## 1. Data audit
 
-### Critical Disclaimer
+### Verified limitations
 
-**The recommendation engine is entirely rule/heuristic-based.** The dataset has zero ground truth for:
-- How many officers were actually deployed to any event
-- How many barricades were placed
-- Which diversion routes were used
-- Whether the deployment was adequate or insufficient
+1. **No `end_datetime` for most rows.** `(closed_datetime − start_datetime)` is used
+   as the duration proxy. This conflates event duration with administrative closure
+   delay and is the main reason duration is hard to predict — see §3.
+2. **No ground-truth resource data.** No field records officers deployed, barricades
+   placed, diversions used, or whether the response was adequate. The recommendation
+   engine is therefore an explicit rule layer, and every API response says so.
+3. **Diurnal reporting bias.** Most events are logged between 19:00 and 08:00 IST.
+   This reflects patrol and reporting shifts, not incident rates. We do not claim
+   traffic is safest at noon. `hour_of_day`, `is_peak_hour`, `is_night` and `time_bin`
+   are still model inputs and therefore partly encode shift patterns; the
+   `/events/distributions` response carries a note stating this.
+4. **Event-driven causes are thin.** The causes central to the brief are 66
+   processions, 45 public events, 14 protests and 4 VIP movements. Forecasts for
+   these are flagged `is_sparse_cause` and the UI leads with analogues.
+5. **`zone` is sparse** (~3,400 of 8,057) and **`junction` sparser** (~2,500). Both
+   are filled with `"unknown"` and used as ordinary categorical levels.
+6. **Anonymisation.** IDs, user IDs, vehicle numbers and some address details are
+   anonymised. No effect on modelling; it does prevent cross-referencing.
+7. **Descriptions are multilingual.** Predominantly Kannada script mixed with
+   transliterated English ("tyear blost", "woter logging"); 17% are empty.
 
-This is stated upfront in every API response and in the demo. Judges should understand that the recommendation layer demonstrates the *architecture* for operationalizing forecasts, not a claim of "learned" resource optimization.
+### Assumptions
 
-### How Officer/Barricade Numbers Were Anchored
+1. **Timestamps are UTC**; Bengaluru is UTC+5:30. All hour and day features are
+   derived after converting to IST.
+2. **`requires_road_closure` is boolean.** Unmappable values become `False`.
+3. **Corridor centroids** are the mean of member-event coordinates. Corridors are
+   linear, not circular, so this is an approximation.
 
-The numbers are not arbitrary. They're derived from:
+---
 
-1. **Road closure frequency by cause** (from data): VIP movements need closure 80% of the time → highest resource allocation. Vehicle breakdowns only 4.3% → lowest.
+## 2. Cleaning & feature engineering
 
-2. **Duration patterns** (from Phase 1): construction events last hours → sustained deployment. Accidents clear in ~40 min → quick response.
+1. **Cause normalisation.** `Debris` merges into `debris`. Causes with fewer than 5
+   occurrences merge into `others` — currently `test_demo` (3) and
+   `fog_low_visibility` (2). *This was documented before but not implemented; it is
+   now done in `clean_event_cause`.* It also stops the dashboard offering "test_demo"
+   as a forecastable option.
+2. **Duration outliers** are capped at 24 hours (1,440 min). Values outside
+   `0 < duration ≤ 1440` become `NaN`. *An earlier version of this document said 7
+   days; the code has used 1,440 for some time.*
+3. **Coordinate cleaning.** Out-of-Bengaluru coordinates and `0` sentinels become
+   `NaN`.
+4. **`event_span_km`** is the haversine distance between start and end coordinates,
+   **capped at 10 km**. *It was previously set to `0.0` when it exceeded 10 km, which
+   made a 12 km closure indistinguishable from a point event — the opposite of the
+   truth.*
+5. **Corridor adjacency** is the top 5 nearest corridors by haversine distance
+   between centroids, written by `compute_corridor_adjacency`. *This step was
+   documented from the beginning but never implemented; `corridor_adjacency.csv` was
+   read by three modules and written by none, surviving only because it was committed.
+   Deleting `data/processed/` and re-running the documented pipeline used to leave the
+   API unable to boot.* The caveat stands: centroid proximity is not road connectivity.
 
-3. **Severity tier** (from Phase 2 model): High severity → more resources, Medium → standard, Low → monitoring only.
+---
 
-4. **Standard traffic management benchmarks**: A typical Bengaluru junction has 2-4 officers. A major road closure needs 6-10. Large events historically get 15-30+.
+## 3. Forecasting
 
-### Diversion Suggestions
+### Why the primary estimator is not a learned model
 
-- Based on **centroid distance** (haversine) from the corridor adjacency table
-- Hour-aware: compares historical event frequency at the specific hour on both the affected and alternate corridor
-- Warns when the suggested alternate is historically busier
-- For "Non-corridor" events, explicitly states that local on-ground assessment is needed
-- **Does NOT account for**: real-time traffic, road connectivity, or actual driving distance (only centroid-to-centroid distance)
+The duration target is dominated by administrative closure delay. On a held-out split:
+
+| Estimator | MAE | Median AE |
+| :--- | ---: | ---: |
+| Naive: global median | 87.6 | 29.2 |
+| Naive: per-cause median | 84.8 | 28.9 |
+| **Hierarchical empirical (primary)** | **84.9** | **29.0** |
+| XGBoost regressor (cross-check) | ~85 | ~30 |
+| k-NN analogue median | ~85 | ~31 |
+
+Every method lands within noise of a one-line `groupby`. Given no accuracy advantage,
+the estimator that reports a calibrated interval and can state how many past events
+each estimate rests on is more useful than one that emits a point estimate. The
+XGBoost models are still trained and served as cross-checks with published metrics,
+so the comparison stays visible.
+
+**The empirical estimator also produces severity**, from the observed class mix in the
+same stratum (Laplace-smoothed, `α = 1`). This is both more accurate than the
+classifier (51.5% vs 46.3%) and better calibrated — mean top probability 0.505 against
+observed accuracy 0.515 — and it makes contradiction impossible. The classifier could
+return "High at 99% confidence" alongside a 19-minute duration estimate, which is Low
+by the definition severity is derived from.
+
+Backoff order, minimum 20 observations per stratum:
+
+```
+(cause, corridor)  →  (cause, road_closure)  →  (cause)  →  global
+```
+
+A requested road closure returns High with probability 1 and stratum `"definition"` —
+it is High by definition, so there is nothing to infer.
+
+### Honest metric interpretation
+
+1. **Severity: 51.5% against a 40.0% baseline.** A ~11-point lift on a 3-class
+   problem. All three classes are predicted with comparable precision (0.48–0.60);
+   `Low` recall is weakest at 0.26.
+2. **Duration: MAE 84.9 min, median AE 29.0 min, P10–P90 covering 76.8%.** The median
+   AE is the operationally useful figure: for a typical event the estimate is about
+   half an hour off. MAE is inflated by the right tail. Where a stratum's
+   interquartile spread exceeds 4×, the response carries a `duration_warning` and the
+   UI tells the dispatcher to plan against the range — pot_holes, for example, is
+   bimodal (15 events under 30 min, 11 over 90 min, almost nothing between).
+3. **k-NN analogues** return a real median and P10–P90 across 25 neighbours.
+   *Previously `method: "knn_analog_fallback"` was returned as a label while the
+   duration came from the regressor and no median was ever computed; two consumers
+   checked for the missing field and silently did nothing.*
+
+### Features
+
+Categorical: `event_cause`, `event_type`, `corridor`, `zone`, `police_station`,
+`direction`, `veh_type`, `junction`, `time_bin`.
+Numerical: `hour_of_day`, `day_of_week`, `is_weekend`, `requires_road_closure_int`
+(duration model only), `is_peak_hour`, `is_night`, `has_vehicle`, `event_span_km`,
+`latitude`, `longitude`.
+Text: `description`, vectorised with **character n-grams (3–5)**. *English word
+tokens with an English stop-word list were previously used on a mostly-Kannada
+corpus; in ablation that text block cost about a point of accuracy.*
+
+Coordinates now come from the request, defaulting to the **corridor centroid** rather
+than the city centre.
+
+### What the model does not know
+
+Traffic volume at the time, road geometry, weather, expected crowd size, VIP security
+level, or any historical deployment outcome.
+
+---
+
+## 4. Resource recommendations
+
+**Entirely rule-based.** The dataset has zero ground truth for officers deployed,
+barricades placed, diversions used, or adequacy of response. This is stated in every
+API response and on the dashboard. The layer demonstrates how a forecast becomes an
+operational decision; it is not a claim of learned resource optimisation.
+
+Counts are anchored to:
+
+1. **Closure frequency by cause** — VIP movement 80%, public event 46%, protest 40%,
+   tree fall 39%, construction 26%, procession 26%, vehicle breakdown 4.3%.
+2. **Duration patterns** — construction runs hours, accidents clear in ~40 minutes.
+3. **Severity tier** from the forecast.
+4. **Standard practice** — a typical junction has 2–4 officers; a major closure needs
+   6–10; large events historically get 15–30+.
+
+### Rule coverage
+
+All 55 rules exist for both closure states at each severity. *Previously most
+High-severity rules existed only with `requires_road_closure=True`, so a High forecast
+with closure set to "No" fell through to the closure variant and printed a plan whose
+first instruction was to close the road, while the response reported
+`road_closure_used: False`. The fallback chain also tried High before Medium and Low,
+so a Medium event could receive the full High closure plan.* The chain now never
+escalates: exact match, then the other closure state at the same severity, then
+strictly downward.
+
+### Diversions
+
+Centroid haversine distance from the adjacency table, hour-aware (compares historical
+event frequency on both corridors at that hour), warns when the alternate is busier,
+and states plainly when the event is not on a monitored corridor. Does **not** account
+for real-time traffic, road connectivity or driving distance.
+
+---
+
+## 5. Computer vision
+
+A per-frame vehicle counter, not an incident detector.
+
+- YOLOv8n, filtered to car / motorcycle / bus / truck.
+- Thresholds are **vehicles per megapixel** plus **fraction of frame covered by
+  boxes**. *Raw box counts were previously used, which made the threshold a function
+  of camera zoom and resolution: a wide shot of free-flowing traffic tripped it while
+  a tight shot of a real jam did not.*
+- Heavy-vehicle presence in dense traffic raises a `needs_human_review` flag.
+- A single frame cannot distinguish stopped from moving traffic. Stationarity across
+  consecutive frames, or bounding-box overlap, is the upgrade path. Every response
+  carries a `method_note` saying so.
+- Inference runs in a **separate process** (`backend/cv_worker.py`). xgboost and torch
+  each load their own OpenMP runtime; on macOS the combination aborts the process when
+  inference is called from a request thread. Isolation fixes that and keeps torch out
+  of the web process entirely. The lazy loader is now lock-guarded — the startup
+  warm-up and an early request could previously construct the model concurrently.
+
+---
+
+## 6. The learning loop
+
+Officers submit actual outcomes; `POST /models/retrain` folds them into training,
+recomputing severity from the corrected duration so the label stays consistent with
+the cleaning pipeline, then hot-swaps the models.
+
+*This was previously claimed in four documents and implemented in none: the log was
+written and displayed, never read back into training.*
+
+Two related corrections:
+
+1. **The committed log was poisoned.** All 13,097 rows had `predicted_duration_min`
+   exactly equal to ground truth, an artefact of a bug fixed in `bc3437a` whose data
+   was never purged — and 468 rows predicted durations beyond the 1,440-minute
+   training cap, which the model cannot produce. The dashboard's "13.3 min MAE / 95.1%
+   accuracy" came entirely from that. The log is now reset and gitignored.
+2. **`/feedback` no longer invents predictions.** For an unrecognised ID it used to
+   fabricate one by perturbing the answer the user had just supplied, guaranteeing a
+   flattering figure; it also crashed with `TypeError` when the duration was omitted.
+   It now returns 404 for IDs with no prediction on record.
+
+Live feedback metrics are computed only over rows that can actually be scored, and
+are displayed separately from the offline benchmark, each labelled as what it is.

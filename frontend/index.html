@@ -391,14 +391,14 @@
   <section class="tab-panel" id="panel-learning">
     <div class="stats-grid">
       <div class="stat-card" style="--accent-color: var(--accent-orange)">
-        <div class="stat-label">Duration MAE</div>
+        <div class="stat-label">Live Duration MAE</div>
         <div class="stat-value" id="stat-mae">—</div>
-        <div class="stat-detail">Mean Absolute Error (min)</div>
+        <div class="stat-detail" id="stat-mae-detail">From logged feedback only</div>
       </div>
       <div class="stat-card" style="--accent-color: var(--accent-green)">
-        <div class="stat-label">Severity Accuracy</div>
+        <div class="stat-label">Live Severity Accuracy</div>
         <div class="stat-value" id="stat-learning-accuracy">—</div>
-        <div class="stat-detail">% Correct Classifications</div>
+        <div class="stat-detail" id="stat-learning-accuracy-detail">From logged feedback only</div>
       </div>
       <div class="stat-card" style="--accent-color: var(--accent-blue)">
         <div class="stat-label">Total Logged</div>
@@ -407,16 +407,31 @@
       </div>
     </div>
 
+    <div class="card mt-12" style="margin-bottom: 1.5rem;">
+      <div style="padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+        <div style="min-width: 260px; flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 2px;">Offline benchmark</div>
+          <div class="text-sm text-dim" id="offline-benchmark">Loading model metrics…</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <span class="text-sm text-dim" id="retrain-status"></span>
+          <button class="btn btn-primary" id="retrain-btn" onclick="triggerRetrain()">
+            <i data-lucide="refresh-cw"></i> Retrain with feedback
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="card mt-12" style="max-width: 800px; margin-left: auto; margin-right: auto; margin-bottom: 2rem;">
       <div class="card-header">
         <h3 class="card-title"><i data-lucide="edit-3"></i> Post-Event Data Entry (Learning Loop)</h3>
-        <p class="text-sm text-dim">Log actual outcomes from the ground to retrain the ML model.</p>
+        <p class="text-sm text-dim">Log the actual outcome. Feedback is scored against the prediction on record, then folded into training when you retrain.</p>
       </div>
       <form id="feedback-form" onsubmit="submitFeedback(event)" style="padding: 1.5rem;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
           <div>
-            <label>Event ID (e.g. EVT-123)</label>
-            <input type="text" id="fb-event-id" class="form-control" required placeholder="Event ID">
+            <label>Event ID (historical FKID… or a SIM- id from the planner)</label>
+            <input type="text" id="fb-event-id" class="form-control" required placeholder="e.g. FKID001928 or SIM-A1B2C3D4">
           </div>
           <div>
             <label>Actual Severity</label>
@@ -483,15 +498,15 @@
     
     <!-- Camera Selection Grid -->
     <div style="display: flex; gap: 15px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
-      <button class="cam-select-btn" onclick="analyzeJunction('silk_board', 'Silk Board Junction')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+      <button class="cam-select-btn" onclick="analyzeJunction('silk_board', 'Silk Board Junction', event)" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
         <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 01 - Southbound</div>
         <div style="font-weight: 600; font-size: 1rem; color: white;">Silk Board Junction</div>
       </button>
-      <button class="cam-select-btn" onclick="analyzeJunction('kr_puram', 'KR Puram Bridge')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+      <button class="cam-select-btn" onclick="analyzeJunction('kr_puram', 'KR Puram Bridge', event)" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
         <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 48 - Eastbound</div>
         <div style="font-weight: 600; font-size: 1rem; color: white;">KR Puram Bridge</div>
       </button>
-      <button class="cam-select-btn" onclick="analyzeJunction('mg_road', 'MG Road Signal')" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
+      <button class="cam-select-btn" onclick="analyzeJunction('mg_road', 'MG Road Signal', event)" style="flex: 1; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 15px; text-align: left; cursor: pointer; transition: all 0.2s;">
         <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px;"><i data-lucide="video" style="width:12px;height:12px;display:inline;"></i> CAM 12 - Westbound</div>
         <div style="font-weight: 600; font-size: 1rem; color: white;">MG Road Signal</div>
       </button>

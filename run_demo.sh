@@ -1,70 +1,62 @@
 #!/bin/bash
-
 # ==============================================================================
-# Gridlock Prototype — Demo Launcher
+# Namma Route — Local Demo Launcher
 # ==============================================================================
-# This script starts the FastAPI backend and the Real-Time Simulator stream.
-# It handles graceful shutdown of both processes upon exit.
+# Starts the API and, optionally, the event simulator.
+#   ./run_demo.sh                    API only
+#   ENABLE_SIMULATOR=1 ./run_demo.sh API + simulated event stream
 # ==============================================================================
-
-# Ensure we're in the right directory
+set -uo pipefail
 cd "$(dirname "$0")"
 
-echo "🚦 Starting Gridlock 2.0 Prototype..."
+export PORT="${PORT:-7860}"
+API_PID=""
+SIM_PID=""
 
-# Function to clean up background processes on exit
 cleanup() {
-    echo -e "\n🛑 Shutting down Gridlock processes..."
-    if [ ! -z "$API_PID" ]; then
-        kill $API_PID 2>/dev/null
-    fi
-    if [ ! -z "$SIM_PID" ]; then
-        kill $SIM_PID 2>/dev/null
-    fi
-    echo "✅ Shutdown complete."
+    echo ""
+    echo "Shutting down..."
+    [ -n "$API_PID" ] && kill "$API_PID" 2>/dev/null
+    [ -n "$SIM_PID" ] && kill "$SIM_PID" 2>/dev/null
     exit 0
 }
-
-# Trap SIGINT (Ctrl+C) and SIGTERM
 trap cleanup SIGINT SIGTERM
 
-# Use port 7860 to avoid conflicts with other local dev servers (e.g. Django)
-export PORT=7860
-
-# 1. Start the API Server
-echo "🚀 Launching FastAPI server on port $PORT..."
-python3 -m uvicorn backend.api:app --host 0.0.0.0 --port $PORT > /dev/null 2>&1 &
-API_PID=$!
-
-# Wait for API to become healthy
-echo "⏳ Waiting for API to become ready..."
-MAX_RETRIES=15
-RETRY_COUNT=0
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -s -f http://localhost:$PORT/health > /dev/null; then
-        echo "✅ API is online and healthy!"
-        break
-    fi
-    sleep 1
-    RETRY_COUNT=$((RETRY_COUNT+1))
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ API failed to start. Check your python environment and logs."
-    cleanup
+# Build any missing artefacts so a fresh clone works without manual steps.
+if [ ! -f data/processed/events_clean.csv ] || [ ! -f data/processed/corridor_adjacency.csv ]; then
+    echo "Building processed dataset..."
+    python3 backend/data_cleaning.py || exit 1
+fi
+if [ ! -f data/processed/models/empirical_duration.pkl ]; then
+    echo "Training models..."
+    python3 backend/forecasting.py || exit 1
 fi
 
-# 2. Start the Real-Time Simulation Stream
-echo "🚀 Starting Real-Time Simulation Stream..."
-python3 -u backend/simulate_stream.py &
-SIM_PID=$!
+echo "Launching API on port $PORT ..."
+python3 -u -m uvicorn backend.api:app --host 0.0.0.0 --port "$PORT" > /tmp/namma_route_api.log 2>&1 &
+API_PID=$!
+
+echo "Waiting for API..."
+for i in $(seq 1 60); do
+    if curl -sf "http://localhost:$PORT/health" > /dev/null 2>&1; then
+        echo "API is healthy."
+        break
+    fi
+    if ! kill -0 "$API_PID" 2>/dev/null; then
+        echo "API process died. Log:"; tail -30 /tmp/namma_route_api.log; exit 1
+    fi
+    sleep 1
+done
+
+if [ "${ENABLE_SIMULATOR:-0}" = "1" ]; then
+    echo "Starting event simulator..."
+    ENABLE_SIMULATOR=1 python3 -u backend/simulate_stream.py &
+    SIM_PID=$!
+fi
 
 echo "============================================================"
-echo "🎯 GRIDLOCK IS LIVE!"
-echo "👉 Open your browser to: http://localhost:$PORT/"
-echo "⚙️  Press Ctrl+C to stop the demo."
+echo "  Namma Route is live:  http://localhost:$PORT/"
+echo "  API log: /tmp/namma_route_api.log"
+echo "  Ctrl+C to stop."
 echo "============================================================"
-
-# Wait for processes
-wait $SIM_PID
 wait $API_PID

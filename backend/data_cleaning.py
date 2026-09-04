@@ -41,6 +41,16 @@ def clean_event_cause(df: pd.DataFrame) -> pd.DataFrame:
     df["event_cause"] = df["event_cause"].replace(cause_map)
     # Fill nulls in event cause
     df["event_cause"] = df["event_cause"].fillna("others")
+
+    # Merge causes with fewer than MIN_CAUSE_COUNT occurrences into "others".
+    # Rare one-hot columns with 2-3 examples add noise and let the dashboard
+    # offer meaningless options (e.g. "test_demo") in the forecast dropdown.
+    MIN_CAUSE_COUNT = 5
+    counts = df["event_cause"].value_counts()
+    rare = counts[counts < MIN_CAUSE_COUNT].index.tolist()
+    if rare:
+        df["event_cause"] = df["event_cause"].replace({c: "others" for c in rare})
+        print(f"[CLEAN] Merged rare causes into 'others': {rare}")
     return df
 
 def parse_datetimes(df: pd.DataFrame) -> pd.DataFrame:
@@ -143,10 +153,53 @@ def engineer_duration_feature(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+# Outcome-based severity thresholds (minutes). See ASSUMPTIONS.md.
+SEVERITY_MEDIUM_MIN = 30
+SEVERITY_HIGH_MIN = 90
+
+
 def engineer_severity_tier(df: pd.DataFrame) -> pd.DataFrame:
-    """Map priority directly to severity_tier as requested."""
+    """Derive severity from the OBSERVED OUTCOME of the event.
+
+    The previous implementation was `severity_tier = priority`. That looked like a
+    label but was not one: `priority` is an administrative flag that is set to High
+    for every event on a named arterial corridor and Low everywhere else (99.84% of
+    rows follow that rule exactly). A model trained on it learns "is this on a main
+    road?" — something the dispatcher already knows before opening the app.
+
+    Severity is now a genuine forecasting target describing how much the event
+    actually cost the network:
+
+        High   — required a road closure, OR took more than 90 min to clear
+        Medium — cleared in 30-90 min, no closure
+        Low    — cleared in under 30 min, no closure
+
+    Because it is outcome-derived it is only defined for rows that have a measured
+    duration (2,523 of 8,057). The rest are left as NaN and excluded from training;
+    they are still shown in the dashboard as "Unknown".
+
+    NOTE: `requires_road_closure` is part of this definition, so it must NOT be used
+    as a feature of the severity model. `forecasting.py` enforces that.
+    """
     df = df.copy()
-    df["severity_tier"] = df["priority"]
+
+    duration = df["duration_to_close_min"]
+    closure = df["requires_road_closure"].astype(bool)
+
+    tier = pd.Series(np.nan, index=df.index, dtype=object)
+    known = duration.notna()
+
+    tier[known & (duration < SEVERITY_MEDIUM_MIN)] = "Low"
+    tier[known & (duration >= SEVERITY_MEDIUM_MIN) & (duration <= SEVERITY_HIGH_MIN)] = "Medium"
+    tier[known & (duration > SEVERITY_HIGH_MIN)] = "High"
+    # A closure is a major impact regardless of how quickly it cleared.
+    tier[known & closure] = "High"
+
+    df["severity_tier"] = tier
+
+    counts = tier.value_counts(dropna=False).to_dict()
+    print(f"[FEAT] severity_tier (outcome-based): {counts}")
+    print(f"[FEAT] priority retained separately as the BTP corridor-priority flag")
     return df
 
 def engineer_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -167,8 +220,11 @@ def engineer_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
         dlon = df["endlongitude"].fillna(0) - df["longitude"].fillna(0)
         # Approximate km using Haversine shortcut at Bengaluru latitude (~12.97°N)
         df["event_span_km"] = np.sqrt((dlat * 111.32)**2 + (dlon * 111.32 * np.cos(np.radians(12.97)))**2)
-        # Cap at reasonable maximum (most events are point events)
-        df.loc[df["event_span_km"] > 10, "event_span_km"] = 0.0
+        # Cap at a reasonable maximum rather than zeroing it: a 12 km closure and a
+        # zero-length pothole are not the same thing, and setting the long one to 0.0
+        # taught the model the exact opposite of the truth.
+        MAX_SPAN_KM = 10.0
+        df.loc[df["event_span_km"] > MAX_SPAN_KM, "event_span_km"] = MAX_SPAN_KM
         df["event_span_km"] = df["event_span_km"].fillna(0.0)
     else:
         df["event_span_km"] = 0.0
@@ -187,6 +243,59 @@ def compute_corridor_centroids(df: pd.DataFrame) -> pd.DataFrame:
     
     centroids.to_csv(CORRIDOR_CENTROIDS_CSV, index=False)
     return centroids
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance in km between two points given in decimal degrees."""
+    R = 6371.0088
+    p1, p2 = np.radians(lat1), np.radians(lat2)
+    dp = np.radians(lat2 - lat1)
+    dl = np.radians(lon2 - lon1)
+    a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+
+def compute_corridor_adjacency(centroids: pd.DataFrame, top_n: int = 5) -> pd.DataFrame:
+    """Build the corridor adjacency table used by the diversion engine.
+
+    ASSUMPTIONS.md has always documented this step ("top 5 nearest neighbours stored
+    per corridor, by haversine distance between centroids") but the function was never
+    written — the pipeline only produced the centroids file, and the adjacency CSV that
+    three modules read at import time survived purely because it was committed to git.
+    Deleting data/processed/ and re-running the documented pipeline used to leave the
+    API unable to boot. This closes that gap.
+
+    Caveat unchanged from the original design note: corridors are linear road segments,
+    not points, so centroid-to-centroid distance is an approximation of adjacency and
+    ignores actual road connectivity.
+    """
+    valid = centroids.dropna(subset=["centroid_lat", "centroid_lon"])
+    valid = valid[valid["corridor"] != "Non-corridor"]
+
+    rows = []
+    for _, src in valid.iterrows():
+        others = valid[valid["corridor"] != src["corridor"]].copy()
+        if others.empty:
+            continue
+        others["distance_km"] = _haversine_km(
+            src["centroid_lat"], src["centroid_lon"],
+            others["centroid_lat"].values, others["centroid_lon"].values,
+        ).round(2)
+        others = others.sort_values("distance_km").head(top_n)
+        for rank, (_, nb) in enumerate(others.iterrows(), start=1):
+            rows.append({
+                "corridor": src["corridor"],
+                "neighbor_corridor": nb["corridor"],
+                "rank": rank,
+                "distance_km": nb["distance_km"],
+                "neighbor_event_count": int(nb["event_count"]),
+            })
+
+    adjacency = pd.DataFrame(rows)
+    adjacency.to_csv(CORRIDOR_ADJACENCY_CSV, index=False)
+    print(f"[GEO] Corridor adjacency: {len(adjacency)} edges across "
+          f"{adjacency['corridor'].nunique()} corridors -> {CORRIDOR_ADJACENCY_CSV.name}")
+    return adjacency
 
 # ─── Step 4: Select Final Columns ─────────────────────────────────────────────
 
@@ -233,7 +342,8 @@ def run_pipeline():
     df = engineer_advanced_features(df)
     
     print("\n--- Corridor Geography ---")
-    compute_corridor_centroids(df)
+    centroids = compute_corridor_centroids(df)
+    compute_corridor_adjacency(centroids)
     
     print("\n--- Column Selection ---")
     df = select_columns(df)

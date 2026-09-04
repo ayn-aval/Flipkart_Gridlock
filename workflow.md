@@ -1,82 +1,90 @@
 # Namma Route: Operational Workflow
 
-This document outlines the step-by-step operational flow of the **Namma Route** platform from the perspective of a Bengaluru Traffic Police (BTP) Dispatcher at the Command Center.
+Step-by-step flow from the perspective of a Bengaluru Traffic Police dispatcher.
 
-The system handles two primary workflows: **Unplanned Events** (e.g., sudden accidents, breakdowns) and **Planned Events** (e.g., scheduled protests, VIP movements, festivals).
-
----
-
-## Workflow A: Unplanned Events (Autonomous Detection)
-*This flow triggers when a sudden event occurs, bypassing the need for manual civilian reporting.*
-
-### Step 1: Autonomous Monitoring
-- The **YOLOv8 Computer Vision Engine** continuously processes live CCTV feeds from major city junctions.
-- It scans for vehicle density (cars, trucks, buses, motorcycles).
-
-### Step 2: AI Detection & Alerting
-- A truck breaks down in the middle of the Outer Ring Road (ORR), causing a sudden buildup of vehicles.
-- The YOLOv8 model detects that the density threshold (>15 vehicles packed densely) has been breached.
-- The system immediately fires an autonomous JSON alert to the backend.
-
-### Step 3: Dashboard Notification
-- Inside the Command Center, the **Namma Route Dashboard** flashes a high-priority "Active Alert."
-- The dispatcher sees an annotated image of the camera feed (with bounding boxes showing the exact bottleneck).
-
-### Step 4: Instant Forecasting
-- Without the dispatcher needing to type anything, the system routes the alert data into the **XGBoost ML Engine**.
-- The system instantly predicts:
-  1. The event will reach **High Severity**.
-  2. It will take an estimated **45 minutes** to clear based on historical analogs.
-
-### Step 5: Resource Dispatch
-- The dispatcher clicks the alert and views the **Response Planner**.
-- The system recommends deploying **1 Heavy Tow Truck**, **5-10 Officers**, and lists the best adjacent corridors to divert incoming traffic to.
-- The dispatcher radios the ground team with exact, data-backed instructions.
+Throughout: the system produces **estimates with stated uncertainty**, not
+predictions. Every forecast reports the range, the number of past events behind it,
+and how it compares to a naive baseline. That framing is the product.
 
 ---
 
-## Workflow B: Planned Events (Proactive Intelligence)
-*This flow is used by dispatchers days or hours in advance of a known scheduled event to prevent gridlock before it starts.*
+## Workflow A — Unplanned events (camera-assisted)
 
-### Step 1: Event Registration
-- The BTP is notified that a major **Political Procession** is scheduled for Friday evening at 5:00 PM near MG Road.
+### 1. Density monitoring
+The YOLOv8 pipeline reads junction camera stills and reports vehicle density,
+normalised per megapixel so the threshold means the same thing on a wide shot and a
+tight one.
 
-### Step 2: Predictive Simulation
-- The dispatcher opens the **Response Planner** tab in the Namma Route dashboard.
-- They input the hypothetical parameters:
-  - Cause: `Procession`
-  - Corridor: `MG Road`
-  - Time: `17:00 (5 PM)`
-  - Day: `Friday`
-  - Road Closure Required: `Yes`
+### 2. Congestion flag
+Density crosses the threshold on the Outer Ring Road. The pipeline raises an alert
+with the annotated frame and a `needs_human_review` flag when heavy vehicles are
+present in dense traffic.
 
-### Step 3: ML Output Generation
-- The dispatcher clicks **Run Forecast**.
-- The **XGBoost Model** analyzes 8,200 past events and outputs:
-  - A **High Severity** warning with 94% confidence.
-  - An estimated duration of **120 minutes** for the congestion to clear after the event starts.
+**What this is:** a congestion signal worth a human look. **What it is not:** accident
+detection. A single frame cannot tell a stopped vehicle from a moving one — the
+response says so in its `method_note`.
 
-### Step 4: Proactive Deployment
-- The system generates a deterministic checklist for the dispatcher:
-  1. Deploy **20-25 Traffic Officers** at critical chokepoints 2 hours prior.
-  2. Send **50 Barricades** to block the specific intersections recommended by the system.
-  3. Update digital traffic boards to advise civilians to use the recommended alternate routes.
+### 3. Dashboard alert
+The dashboard shows the alert with the annotated frame. The frame is fetched once per
+alert rather than on every poll.
+
+### 4. Forecast
+The alert routes into the estimator, which returns:
+- an **impact tier** (Low / Medium / High) with calibrated probabilities
+- an **expected clearance time** as a median plus a typical range
+- the **evidence**: "median of 244 past vehicle breakdown events on Mysore Road"
+- cross-checks from the k-NN analogues and the regression model
+
+If the interquartile spread is wide, the response carries a warning telling the
+dispatcher to plan against the range rather than the midpoint.
+
+### 5. Dispatch
+The Response Planner returns officer and barricade counts, an action checklist and
+the best adjacent corridors. The checklist matches the closure decision that was
+actually entered — asking for a High-severity plan without a closure returns
+lane-control actions, not instructions to close the road.
 
 ---
 
-## Workflow C: The Continuous Learning Loop
-*This flow occurs after BOTH planned and unplanned events are resolved, ensuring the system gets smarter over time.*
+## Workflow B — Planned events (proactive)
 
-### Step 1: Ground Truth Logging
-- The event is completely cleared and traffic returns to normal.
-- The dispatcher navigates to the **Post-Event Learning** tab.
+### 1. Registration
+A procession is scheduled for Friday 17:00 near MG Road.
 
-### Step 2: Data Entry
-- The dispatcher inputs the *actual* outcome of the event:
-  - Actual Severity: `Medium` (Because the proactive barricading worked well!)
-  - Actual Duration: `90 minutes` (Cleared 30 minutes faster than predicted).
+### 2. Parameters
+The dispatcher enters cause `Procession`, corridor `CBD 1`, hour `17:00`, day
+`Friday`, road closure `Yes`.
 
-### Step 3: Model Retraining
-- The system records this new data point into the `learning_log.csv`.
-- It calculates the delta (error) between what it predicted and what actually happened.
-- On the next system cycle, the ML model ingests this new ground-truth data, adjusting its weights so that future predictions for MG Road processions are even more accurate.
+### 3. Output
+- **High impact tier.** With a closure requested this is High *by definition*, and the
+  response says so rather than implying a model inferred it.
+- **Expected clearance ~46 min, typical range 22–85 min**, based on past processions.
+- A **thin-history flag**: processions are 66 events in the dataset. The UI leads with
+  the analogue list and the range rather than the midpoint.
+
+### 4. Deployment
+The planner returns 8–15 officers, 10–20 barricades, a route-closure checklist and
+diversion corridors with hour-aware rationale.
+
+---
+
+## Workflow C — The learning loop
+
+### 1. Log the outcome
+After the event clears, the dispatcher opens **Post-Event Learning** and enters the
+actual severity and clearance time against the event ID — either a historical `FKID…`
+or a `SIM-…` id returned by the planner. IDs with no prediction on record are
+rejected rather than scored against an invented one.
+
+### 2. Live scoring
+The panel shows accuracy computed **only from logged feedback**, over rows that can
+actually be scored, and displays the offline benchmark separately and labelled as
+such. Both start empty and move as feedback arrives.
+
+### 3. Retrain
+**Retrain with feedback** folds the logged outcomes into the training set, recomputes
+severity from the corrected durations, retrains and hot-swaps the models without a
+restart. The button reports when it finishes.
+
+This is a real retraining path, not a description of one. It can also be run from the
+command line with `python3 backend/forecasting.py --feedback`.

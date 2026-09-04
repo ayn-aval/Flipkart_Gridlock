@@ -8,3 +8,6 @@ backend.log
 venv
 env
 .venv
+*.pptx
+data/processed/learning_log.csv
+data/active_alerts.json

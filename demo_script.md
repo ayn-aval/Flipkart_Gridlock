@@ -1,59 +1,121 @@
-# 🎤 Namma Route: The 3-Minute Killer Demo Script
+# Namma Route — 3-Minute Demo Script
 
-*Print this out or keep it on a second screen. The text in **[Brackets]** tells you what to click on the screen. The regular text is exactly what you should say out loud to the judges.*
+**[Bracketed text]** is what to click. The rest is roughly what to say.
 
----
-
-## 1. The Hook (Landing Page)
-**[Action: Start on the dark-mode animated Landing Page. Don't click anything yet.]**
-
-**"Hi everyone, I’m excited to show you Namma Route. We built this exclusively for the Flipkart Gridlock 2.0 challenge to solve a massive problem for the Bengaluru Traffic Police: the fact that traffic management today is almost entirely *reactive*. When a sudden breakdown or a political rally happens, the police have to guess how many officers to send. We built an AI decision support system that predicts gridlock *before* it happens. Let’s jump into the Command Center."**
-
-**[Action: Click the glowing "Launch Command Center" button.]**
+The spine of this demo is that the system is **calibrated**: it tells you how
+confident it is, what evidence it is standing on, and where it is weak. That is
+harder to build than a confident-looking number and it is the thing worth showing.
 
 ---
 
-## 2. The Big Picture (Dashboard & Map)
-**[Action: The Dashboard overview loads. Briefly point to the numbers at the top.]**
+## 1. The hook — landing page
 
-**"To build a system this smart, we couldn’t rely on theory. We trained our Machine Learning models on 8,200 real, historical traffic events right here in Bengaluru using the BTP’s Astram data."**
+**[Start on the landing page.]**
 
-**[Action: Click on the "Live Map" tab in the sidebar.]**
+> "Namma Route is a decision-support tool for the Bengaluru Traffic Police. When an
+> event happens today, the call on how many officers to send is made from experience
+> and instinct. We turn 8,000 historical events into an estimate you can act on — and,
+> just as importantly, an honest statement of how much to trust it."
 
-**"Using the MapmyIndia Enterprise API, dispatchers get an instant, spatial view of where historical bottlenecks occur. You can see the heatmaps and clusters right here. But knowing where traffic *was* isn't enough. We need to know what traffic *will be*. That’s where the Response Planner comes in."**
-
----
-
-## 3. The Proactive Solution (Response Planner)
-**[Action: Click on the "Response Planner" (or "Predictive Dispatch") tab.]**
-
-**"Let’s say the police get notified that a massive political procession is happening on MG Road tomorrow at 5 PM. Instead of guessing how to handle it, the dispatcher inputs those exact parameters right here."**
-
-**[Action: Slowly select the dropdowns on screen: Cause -> Procession, Corridor -> MG Road, Hour -> 5 PM, Road Closure -> Yes.]**
-
-**"I just hit 'Run Forecast'."**
-**[Action: Click 'Run Forecast' and wait 1 second for the output to appear.]**
-
-**"Instantly, our XGBoost engine predicts this will be a High-Severity event and estimates it will take exactly 120 minutes to clear. But we don't just give them data—we give them an action plan. Below, the system tells the dispatcher *exactly* how many officers to deploy, how many barricades to send, and even recommends specific alternate routes for diversions to stop the gridlock before it cascades."**
+**[Click Launch Command Center.]**
 
 ---
 
-## 4. The Autonomous Solution (CCTV Alerts)
-**[Action: Click on the "Active Alerts" (or "CCTV Watchtower") tab.]**
+## 2. The data — dashboard and map
 
-**"But what about *unplanned* events, like sudden breakdowns? By the time someone calls it in, the road is already blocked. To fix this, we integrated an autonomous computer vision pipeline."**
+> "8,057 real Astram events. Note the severity breakdown: about a third have a
+> measured outcome. The rest we show as 'no measured outcome' rather than inventing a
+> label for them."
 
-**[Action: Click on one of the simulated CCTV camera buttons to load the YOLOv8 image.]**
+**[Click Live Map.]**
 
-**"Using YOLOv8, Namma Route actively watches live junction cameras. If it detects a sudden, massive buildup of vehicles—like this—it automatically flags it as a High-Severity alert. It acts as an autonomous watchtower, catching bottlenecks the second they form."**
+> "Historical events across the city. But knowing where traffic *was* isn't the job —
+> the job is knowing what happens next."
 
 ---
 
-## 5. The Future (Learning Loop)
-**[Action: Click on the "Post-Event Learning" tab.]**
+## 3. The forecast — Response Planner
 
-**"Finally, no AI is perfect on day one. So we built in a Continuous Learning Loop. Once a jam is cleared, the officer logs the *actual* clearance time here. The system records the difference between its prediction and reality, and continuously retrains itself. Every single day, Namma Route gets smarter, adapting to the ever-changing pulse of Bengaluru."**
+**[Response Planner. Select: Cause → Procession, Corridor → CBD 1, Hour → 5 PM,
+Day → Friday, Road Closure → Yes. Click Run Forecast.]**
 
-**[Action: Turn back to the judges with a confident smile.]**
+> "High impact tier — and look at the reasoning line: with a road closure requested,
+> that's High *by definition*. The system isn't pretending to infer something it was
+> told.
+>
+> Clearance: about 46 minutes, typical range 22 to 85, based on past processions on
+> this corridor. We show the range because the point estimate on its own would be
+> false precision.
+>
+> And it flags that processions are thin in our data — 66 events — so it tells you to
+> lean on the analogue list below rather than the midpoint."
 
-**"Thank you. We’re ready to turn Bengaluru from India's traffic capital into India's traffic *intelligence* capital. I’d love to answer any questions."**
+**[Scroll to the deployment plan.]**
+
+> "8 to 15 officers, 10 to 20 barricades, a route-closure checklist and diversion
+> corridors. This layer is a transparent rule table, not a model — the dataset has no
+> record of what was actually deployed, so claiming we learned it would be a lie. The
+> disclaimer ships in the API response itself."
+
+**[Optional, if asked about accuracy:]**
+
+> "51.5% on a three-class problem against a 40% baseline. That's modest and it's real.
+> An earlier version of this reported 91% — that number came from a leak, the label
+> was really just 'is this on a main road', and we took it out. `evaluate_metrics.py`
+> re-runs the leak test on every invocation so it can't come back."
+
+---
+
+## 4. The camera layer — CCTV
+
+**[CCTV tab, click a camera.]**
+
+> "YOLOv8 counts vehicles and reports density per megapixel, so the threshold means
+> the same thing whether the camera is zoomed wide or tight.
+>
+> We're careful about what we claim here: this flags congestion, not accidents. One
+> frame can't tell a stopped car from a moving one. Detecting an actual incident needs
+> stationarity across frames — that's the next build, not something we'd claim today."
+
+---
+
+## 5. The loop — Post-Event Learning
+
+**[Post-Event Learning tab.]**
+
+> "When an event clears, the officer logs what actually happened. These two counters
+> are computed purely from that logged feedback — they start at zero and move as real
+> outcomes come in. The offline benchmark is shown separately, labelled as a benchmark,
+> so nobody confuses the two."
+
+**[Enter a real event ID and an actual duration. Submit. Then click Retrain with
+feedback.]**
+
+> "And this genuinely retrains. It folds the logged outcomes into the training set,
+> recomputes the labels and hot-swaps the models without a restart."
+
+---
+
+## 6. Close
+
+> "Namma Route turns a traffic event into a resourcing decision, and it tells you how
+> much to trust that decision. We think the honesty is the feature — a dispatcher who
+> can see the range and the sample size can use the number. One who's given a
+> confident-looking point estimate can't."
+
+**[Questions.]**
+
+---
+
+## If a judge pushes on the numbers
+
+- **"51% isn't very good."** Correct — against a 40% baseline on three classes. The
+  data supports about eleven points of lift and we report it next to the baseline
+  everywhere. The alternative was a 91% figure that measured nothing.
+- **"Why not deep learning?"** We tried gradient boosting; it ties a one-line groupby
+  (MAE 84.9 vs 84.8). The target measures administrative ticket closure, not
+  clearance, so there is little learnable structure. We ship the estimator that
+  reports a calibrated interval and its sample size, and publish the comparison.
+- **"How do you know there's no leakage?"** `evaluate_metrics.py` runs a feature
+  ablation every time and fails loudly if removing geography costs more than 0.20
+  accuracy — the signature of the original bug.

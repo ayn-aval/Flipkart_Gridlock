@@ -1,39 +1,27 @@
 FROM python:3.10-slim
 
-# Install system dependencies (required for some Python packages)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libgl1 \
-    libglib2.0-0 \
-    libsm6 \
-    libxrender1 \
-    libxext6 \
+# Linux graphics libraries required for headless OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create a non-root user specifically required for Hugging Face Spaces (UID 1000)
+# Non-root user (UID 1000) as required by Hugging Face Spaces
 RUN useradd -m -u 1000 user
-
-# Copy the entire project and change ownership to the new user
 COPY --chown=user:user . /app
-
-# Switch to the new non-root user
 USER user
 
-# Make the startup script executable
 RUN chmod +x start_prod.sh
 
-# Retrain models inside the container to prevent Python/Pandas version mismatch pickle errors
-RUN python3 backend/forecasting.py
+# Build the processed dataset AND the models inside the image. Previously only
+# forecasting.py ran here, so the container depended on data/processed/ artefacts
+# being committed — including corridor_adjacency.csv, which nothing generated.
+# Running both steps also avoids cross-version unpickling errors.
+RUN python3 backend/data_cleaning.py && python3 backend/forecasting.py
 
-# Expose port 7860 (Hugging Face default)
 EXPOSE 7860
-
-# Set the entrypoint to the startup script
 CMD ["./start_prod.sh"]

@@ -1,0 +1,4 @@
+# Only needed to regenerate the EDA charts via backend/data_audit.py.
+-r requirements.txt
+matplotlib==3.10.9
+seaborn==0.13.2
