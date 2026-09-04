@@ -36,3 +36,7 @@ data/processed/*.parquet
 backend.log
 data/processed/learning_log.csv
 data/active_alerts.json
+
+# Presentation decks — large binaries kept local. The Namma Route deck is ~54 MB,
+# which would sit above GitHub's large-file warning and nearly double the repo.
+*.pptx
