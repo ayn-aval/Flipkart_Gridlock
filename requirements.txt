@@ -1,3 +1,9 @@
+# Requires Python >= 3.11. pandas 3.x, numpy 2.4 and scikit-learn 1.9 all declare
+# Requires-Python >=3.11, so these pins cannot be installed on an older interpreter.
+# Keep this in step with the base image in the Dockerfile: the two drifted apart once
+# already, and because the container installs before it runs anything, the mismatch
+# surfaced as a failed deploy rather than a test failure.
+#
 # Pinned to the versions this project is developed and tested against.
 # The models are pickled sklearn pipelines, so an unpinned upgrade of pandas,
 # scikit-learn or xgboost can silently produce artefacts the API cannot load.

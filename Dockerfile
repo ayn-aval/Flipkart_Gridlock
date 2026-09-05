@@ -1,4 +1,10 @@
-FROM python:3.10-slim
+# Must be >= 3.11: pandas 3.x, numpy 2.4 and scikit-learn 1.9 all declare
+# Requires-Python >=3.11, so the previous python:3.10-slim base could not install
+# requirements.txt at all — the build failed on `pip install` before any code ran.
+# 3.12 rather than 3.13/3.14 because torch, opencv and ultralytics have the longest
+# track record there; every pin in requirements.txt has been resolved against
+# manylinux x86_64 wheels for this exact version.
+FROM python:3.12-slim
 
 # Linux graphics libraries required for headless OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \

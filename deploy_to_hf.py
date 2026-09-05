@@ -24,7 +24,10 @@ Usage:
 
 import argparse
 import os
+import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ID = "aynaval2003/namma-route"
@@ -59,12 +62,64 @@ DELETE_PATTERNS = [
 ]
 
 
+def preflight_requirements() -> list:
+    """Check requirements.txt actually installs on the Dockerfile's Python, for Linux.
+
+    Exists because a deploy already failed this way: the pins were refreshed from a
+    Python 3.14 development environment while the image was still built on
+    python:3.10-slim, and pandas 3.x requires >=3.11. Nothing local catches that —
+    the packages import fine on the developer's machine, and the container installs
+    them before it runs a line of project code, so the first sign of trouble was a
+    red build on a public demo. pip can resolve for another interpreter and platform
+    without installing, which turns a ten-minute failed build into a two-second check.
+
+    Returns a list of problems; empty means good.
+    """
+    dockerfile = ROOT / "Dockerfile"
+    reqs = ROOT / "requirements.txt"
+    if not dockerfile.exists() or not reqs.exists():
+        return []
+
+    m = re.search(r"^FROM\s+python:(\d+\.\d+)", dockerfile.read_text(), re.MULTILINE)
+    if not m:
+        return []
+    pyver = m.group(1)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--dry-run", "--no-deps",
+             "--only-binary=:all:", "--python-version", pyver,
+             # opencv ships manylinux_2_17/2014 wheels, torch ships 2_28 — a single
+             # platform tag rejects one or the other, so offer all the common ones.
+             "--platform", "manylinux_2_17_x86_64",
+             "--platform", "manylinux2014_x86_64",
+             "--platform", "manylinux_2_28_x86_64",
+             "--target", tmp, "-r", str(reqs)],
+            capture_output=True, text=True, timeout=600,
+        )
+    if proc.returncode == 0:
+        print(f"  pre-flight: requirements.txt resolves on Python {pyver} / linux x86_64")
+        return []
+    bad = [l.strip() for l in (proc.stdout + proc.stderr).splitlines()
+           if "No matching distribution" in l or "Could not find a version" in l]
+    return bad or [f"pip could not resolve requirements.txt for Python {pyver}"]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true",
                     help="List what would be uploaded and deleted, then exit.")
     ap.add_argument("--repo-id", default=REPO_ID)
     args = ap.parse_args()
+
+    problems = preflight_requirements()
+    if problems:
+        print("\nPRE-FLIGHT FAILED — requirements.txt will not install in the container:")
+        for b in problems:
+            print(f"   {b}")
+        print("\nFix the pins or the Dockerfile base image before deploying; this is")
+        print("exactly the failure that breaks the build after the upload has landed.")
+        sys.exit(1)
 
     if args.dry_run:
         import fnmatch
