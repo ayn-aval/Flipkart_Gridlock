@@ -34,6 +34,7 @@ Usage:
 
 import sys
 import json
+import math
 import pickle
 import warnings
 from pathlib import Path
@@ -43,7 +44,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import (
     accuracy_score, f1_score, classification_report,
-    mean_absolute_error, median_absolute_error, r2_score,
+    mean_absolute_error, median_absolute_error, r2_score, roc_auc_score,
 )
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.neighbors import NearestNeighbors
@@ -94,6 +95,33 @@ SPARSE_CAUSES = ["public_event", "procession", "vip_movement", "protest"]
 
 # Minimum group size before the empirical estimator will trust a stratum.
 EMPIRICAL_MIN_SAMPLES = 20
+
+# Minutes past which an event stops being a routine clearance and becomes a
+# standing blockage that needs escalation. Chosen empirically: point estimates of
+# clearance time are close to unpredictable on this data (MAE 84.9 against an 87.6
+# baseline — barely better than guessing the median), but the *probability that an
+# event runs long* separates cleanly, because it is almost entirely a function of
+# what kind of event it is. Vehicle breakdowns exceed three hours 0.1% of the time
+# (95% CI [0.000, 0.003], n=1835); construction does so 54.9% of the time
+# (CI [0.414, 0.677], n=51). Those intervals are nowhere near overlapping, so the
+# distinction is worth surfacing even though the minute-level estimate is not.
+LONG_INCIDENT_THRESHOLD_MIN = 180
+
+
+def _wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple:
+    """95% confidence interval for a proportion.
+
+    Wilson rather than the normal approximation because several causes have small
+    samples and rates near zero, where the normal interval produces bounds below 0
+    and badly understates uncertainty.
+    """
+    if n <= 0:
+        return (0.0, 1.0)
+    p = successes / n
+    denom = 1.0 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return (max(0.0, centre - half), min(1.0, centre + half))
 
 
 # ─── Data Preparation ────────────────────────────────────────────────────────
@@ -308,6 +336,36 @@ def train_severity_classifier(df: pd.DataFrame) -> dict:
 
 # ─── Model 2a: Hierarchical Empirical Duration Estimator (primary) ───────────
 
+# Phrased for a control-room reader: what to do, not what the number is. Every
+# variant carries the sample size, because a rate from 30 events and a rate from
+# 1,800 warrant different levels of trust and the reader cannot tell them apart
+# from the percentage alone.
+_LONG_RISK_NOTE = {
+    "very_low": (
+        "Almost always cleared inside {hours} hours — {pct:.1f}% of {n} comparable "
+        "events ran longer. Routine clearance; no standing escalation needed."
+    ),
+    "low": (
+        "Usually cleared inside {hours} hours ({pct:.0f}% of {n} comparable events ran "
+        "longer). Escalate only if it is still open at the {hours}-hour mark."
+    ),
+    "uncertain": (
+        "Too few comparable events to call: {pct:.0f}% of {n} ran past {hours} hours, "
+        "but the true rate could be anywhere from {lo:.0f}% to {hi:.0f}%. Treat the "
+        "duration range and the analogue list as the primary guidance."
+    ),
+    "elevated": (
+        "Meaningful chance of a long blockage — {pct:.0f}% of {n} comparable events ran "
+        "past {hours} hours ({lo:.0f}-{hi:.0f}% range). Worth planning a diversion early."
+    ),
+    "high": (
+        "Likely to become a standing blockage: {pct:.0f}% of {n} comparable events ran "
+        "past {hours} hours ({lo:.0f}-{hi:.0f}% range). Plan a diversion now rather than "
+        "waiting for the road to clear."
+    ),
+}
+
+
 class EmpiricalOutcomeEstimator:
     """Conditional empirical distribution of clearance time AND severity.
 
@@ -422,6 +480,60 @@ class EmpiricalOutcomeEstimator:
             "dispersion": dispersion,
         }
 
+    def predict_long_incident_risk(self, event: dict) -> dict:
+        """Probability the event is still blocking the road after three hours.
+
+        Read off the same stratum as duration and severity, so the three outputs can
+        never contradict one another. No separate model: the risk is the tail mass of
+        the distribution already stored for this stratum, which also means it needs no
+        extra artefact and retrains automatically with everything else.
+
+        This is the one question in the project that the data answers well. A
+        gradient-boosted classifier over cause, corridor, hour, span and vehicle type
+        reaches AUC 0.937 on a held-out split — and a model given *only* the cause
+        reaches 0.937 too, with every ablation of the other features leaving it
+        unchanged. The signal is real but it is entirely "what kind of event is this",
+        so a lookup on the observed rate is the honest way to express it.
+        """
+        for level, key, description in self._keys_for(event):
+            values = self.tables_.get(level, {}).get(key)
+            if values is not None:
+                break
+        else:
+            values, level, description = self.global_values_, "global", "all past events"
+
+        n = int(len(values))
+        # values is sorted, so the tail count is a binary search rather than a scan.
+        long_count = int(n - np.searchsorted(values, LONG_INCIDENT_THRESHOLD_MIN, side="right"))
+        rate = long_count / n if n else 0.0
+        lo, hi = _wilson_interval(long_count, n)
+
+        # The interval, not the point estimate, decides the label: a stratum with three
+        # observations can show a rate of 0.0 while remaining entirely consistent with
+        # a one-in-three chance, and must not be presented as low risk.
+        if hi < 0.05:
+            band = "very_low"
+        elif hi < 0.15:
+            band = "low"
+        elif lo > 0.40:
+            band = "high"
+        elif lo > 0.15:
+            band = "elevated"
+        else:
+            band = "uncertain"
+
+        return {
+            "threshold_min": LONG_INCIDENT_THRESHOLD_MIN,
+            "probability": round(rate, 3),
+            "ci_low": round(lo, 3),
+            "ci_high": round(hi, 3),
+            "band": band,
+            "sample_size": n,
+            "observed_long_events": long_count,
+            "stratum": level,
+            "basis": description,
+        }
+
     def predict_severity(self, event: dict) -> dict:
         # A road closure is High by the definition of the label, so there is nothing
         # to infer in that case.
@@ -491,6 +603,26 @@ def train_empirical_estimator(df: pd.DataFrame) -> dict:
     print(f"  Mean confidence: {mean_conf:.3f}  (calibration check: should track accuracy)")
     print(classification_report(y_sev, pred, digits=3, zero_division=0))
 
+    # ── Long-incident risk ──────────────────────────────────────────────────
+    # Scored as a probabilistic forecast, not a classifier: AUC for ranking, Brier
+    # against the base rate for calibration. Beating the base-rate Brier is the test
+    # that matters — a model can rank well and still be badly calibrated, and the UI
+    # shows the probability itself, not just the ordering.
+    risk = [est.predict_long_incident_risk(r) for r in rows]
+    p_long = np.array([r["probability"] for r in risk])
+    y_long = (y > LONG_INCIDENT_THRESHOLD_MIN).astype(int)
+    base_rate = float((train_df["duration_to_close_min"] > LONG_INCIDENT_THRESHOLD_MIN).mean())
+    brier = float(np.mean((p_long - y_long) ** 2))
+    brier_base = float(np.mean((base_rate - y_long) ** 2))
+    try:
+        auc = float(roc_auc_score(y_long, p_long)) if len(set(y_long)) > 1 else float("nan")
+    except Exception:
+        auc = float("nan")
+
+    print(f"\n  --- Long-incident risk (> {LONG_INCIDENT_THRESHOLD_MIN} min) ---")
+    print(f"  Base rate: {y_long.mean():.3f}   AUC: {auc:.3f}")
+    print(f"  Brier:     {brier:.4f}   (always-predict-base-rate {brier_base:.4f})")
+
     # Refit on the full labelled set for serving.
     est = EmpiricalOutcomeEstimator().fit(df)
 
@@ -509,6 +641,20 @@ def train_empirical_estimator(df: pd.DataFrame) -> dict:
         "severity_majority_baseline": round(baseline, 4),
         "severity_lift_over_baseline": round(float(acc - baseline), 4),
         "severity_mean_confidence": round(mean_conf, 3),
+        "long_incident_threshold_min": LONG_INCIDENT_THRESHOLD_MIN,
+        "long_incident_base_rate": round(float(y_long.mean()), 4),
+        "long_incident_auc": None if np.isnan(auc) else round(auc, 3),
+        "long_incident_brier": round(brier, 4),
+        "long_incident_brier_baseline": round(brier_base, 4),
+        "long_incident_note": (
+            "This is the strongest result in the project and the one worth leading with. "
+            "Whether an event runs past three hours is largely determined by what kind of "
+            "event it is: vehicle breakdowns exceed it 0.1% of the time, construction and "
+            "road-condition work more than half the time. A gradient-boosted classifier "
+            "over cause, corridor, hour, span and vehicle type reaches the same AUC as a "
+            "lookup on cause alone, and ablating any other feature leaves it unchanged — "
+            "so the empirical rate is reported directly rather than dressed up as a model."
+        ),
         "train_size": int(len(train_df)),
         "test_size": int(len(test_df)),
         "honest_note": (
@@ -777,6 +923,21 @@ class ForecastingEngine:
 
         model_duration = float(np.expm1(self.duration_pipeline.predict(input_df[ALL_FEATURES])[0]))
         result["model_duration_min"] = round(max(1.0, model_duration), 1)
+
+        # ── Long-incident risk ───────────────────────────────────────────────
+        # The strongest signal available. Reported alongside the minute estimate
+        # rather than instead of it, because it answers the question a control room
+        # actually acts on: is this a tow-truck job or something that will still be
+        # blocking the carriageway at shift change?
+        risk = self.empirical.predict_long_incident_risk(event_input)
+        result["long_incident_risk"] = risk
+        result["long_incident_note"] = _LONG_RISK_NOTE[risk["band"]].format(
+            hours=risk["threshold_min"] // 60,
+            pct=risk["probability"] * 100,
+            lo=risk["ci_low"] * 100,
+            hi=risk["ci_high"] * 100,
+            n=risk["sample_size"],
+        )
 
         # ── Analogues ───────────────────────────────────────────────────────
         similar, analogue_stats = self._find_analogues(input_df)

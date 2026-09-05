@@ -84,6 +84,24 @@ and reported next to the baseline everywhere it appears.
 1. **No `end_datetime` for most rows.** `(closed_datetime − start_datetime)` is used
    as the duration proxy. This conflates event duration with administrative closure
    delay and is the main reason duration is hard to predict — see §3.
+
+   **Do not try to recover the missing labels from `modified_datetime`.** It looks
+   like an easy win: only 31% of rows carry a duration, `modified_datetime` is 100%
+   populated, and on the rows where both exist it equals `closed_datetime` to within
+   a minute 98.2% of the time. Using it would roughly triple the training set.
+
+   It is a trap. Of the 3,956 closed events with no `closed_datetime`, **91.6% have a
+   `modified_datetime` falling exactly at `:35` past the hour**, against 1.9% of the
+   genuinely closed ones. Those events were closed by a recurring sweep, not by anyone
+   observing the road clear. Their implied durations cluster tightly around 147
+   minutes (p25 129, p75 167) where real closures are heavy-tailed (median 52, mean
+   523). Feeding them in would add ~3,800 synthetic labels stacked near the sweep
+   interval, pull every estimate toward it, and — because the test split would inherit
+   the same artefact — report the result as an accuracy improvement. That is the same
+   failure as the original `priority` leak wearing different clothes.
+
+   The 69% of events without a real close time are not recoverable from this export.
+   Fixing it requires the upstream system to record an actual resolution timestamp.
 2. **No ground-truth resource data.** No field records officers deployed, barricades
    placed, diversions used, or whether the response was adequate. The recommendation
    engine is therefore an explicit rule layer, and every API response says so.

@@ -37,11 +37,27 @@ We would rather state this plainly up front than bury it.
 
 | Question | Answer | How good |
 | :--- | :--- | :--- |
+| Will this still be blocking the road in 3 hours? | Probability, 95% interval, and the sample behind it | **AUC 0.935**; Brier **0.052** against **0.076** for always predicting the base rate |
 | How severe will this event be? | Low / Medium / High impact tier | **51.5%** accuracy vs a **40.0%** majority-class baseline |
 | How long until it clears? | Median + P10–P90 range, with the sample it rests on | **MAE 84.9 min**, median AE **29.0 min**; interval covers **76.8%** of outcomes |
 | How many officers and barricades? | Explicit rule table | Not learned — the dataset has no deployment ground truth |
 | Where should traffic divert? | Two or three nearest corridors, hour-aware | Centroid distance; ignores real road connectivity |
 | Is anything happening on camera? | Vehicle density per frame | A counter with a threshold, not incident detection |
+
+The first row is the one to read first. Asking *how many minutes* an event will take
+is close to unanswerable here — the best estimator beats "always guess the median" by
+under three minutes of MAE, and text features, finer geography and gradient boosting
+all fail to improve on it. Asking *whether this will still be blocking the road at
+shift change* is answerable at AUC 0.935, because it is largely determined by what
+kind of event it is: vehicle breakdowns run past three hours 0.1% of the time
+(95% CI [0.000, 0.003], n=1835) while construction does so 54.9% of the time
+(CI [0.414, 0.677], n=51). Those intervals do not overlap, and that gap is the
+operationally useful thing this dataset contains.
+
+It is reported as an observed rate rather than a model because it *is* one: a
+gradient-boosted classifier over cause, corridor, hour, span and vehicle type scores
+AUC 0.937, and a lookup on cause alone scores 0.937 too, with every ablation of the
+other features leaving it unchanged.
 
 The severity model beats the baseline by about eleven points. That is a real but
 modest signal, and it is what this dataset supports once the target is defined

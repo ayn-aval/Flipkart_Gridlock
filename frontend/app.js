@@ -841,6 +841,46 @@ function renderForecastResults(result) {
       <strong>Thin history:</strong> ${esc(f.sparse_cause_note)}
     </div>` : '';
 
+  // Long-incident risk. Given its own block rather than a line of small print
+  // because it is the best-supported number the engine produces (AUC 0.935) and the
+  // one an operator acts on: a tow-truck job and a half-day excavation need
+  // different decisions long before either is close to finishing.
+  const RISK_BAND = {
+    very_low: { label: 'Routine clearance', color: '#22c55e' },
+    low:      { label: 'Low risk',          color: '#84cc16' },
+    uncertain:{ label: 'Too few to call',   color: '#94a3b8' },
+    elevated: { label: 'Elevated risk',     color: '#f59e0b' },
+    high:     { label: 'Likely blockage',   color: '#ef4444' },
+  };
+  const k = f.long_incident_risk;
+  const riskHtml = k ? (() => {
+    const band = RISK_BAND[k.band] || RISK_BAND.uncertain;
+    const hrs = Math.round(k.threshold_min / 60);
+    // The bar shows the confidence interval, not just the point estimate — with 41
+    // observations the difference between the two is the whole story.
+    const lo = k.ci_low * 100, hi = k.ci_high * 100, pt = k.probability * 100;
+    return `
+    <div style="margin-top:16px; padding:14px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-left:3px solid ${band.color}; border-radius:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+        <span class="text-muted" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+          Still blocking after ${hrs}h
+        </span>
+        <span style="font-weight:700; color:${band.color}; font-size:0.9rem;">${esc(band.label)}</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:10px; margin-top:6px;">
+        <span style="font-size:1.5rem; font-weight:700; color:${band.color};">${pt.toFixed(pt < 1 ? 1 : 0)}%</span>
+        <span class="text-muted" style="font-size:0.78rem;">
+          95% CI ${lo.toFixed(lo < 1 ? 1 : 0)}–${hi.toFixed(0)}% &middot; ${esc(k.observed_long_events)} of ${esc(k.sample_size)} past events
+        </span>
+      </div>
+      <div style="position:relative; height:6px; background:var(--border-color); border-radius:3px; margin-top:10px;">
+        <div style="position:absolute; left:${lo}%; width:${Math.max(hi - lo, 0.8)}%; height:100%; background:${band.color}; opacity:0.35; border-radius:3px;"></div>
+        <div style="position:absolute; left:${Math.min(pt, 99.4)}%; width:2px; height:100%; background:${band.color};"></div>
+      </div>
+      <div class="text-muted" style="font-size:0.8rem; margin-top:10px;">${esc(f.long_incident_note || '')}</div>
+    </div>`;
+  })() : '';
+
   const analogHtml = f.analog_duration_median_min != null ? `
     <div style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">
       Nearest-neighbour cross-check: median ${esc(fmtDuration(f.analog_duration_median_min))}
@@ -884,6 +924,8 @@ function renderForecastResults(result) {
           <div style="display:flex; gap:16px; margin-top:8px;">${probsHtml}</div>
         </div>
       </div>
+
+      ${riskHtml}
 
       <div class="text-muted" style="font-size:0.78rem; margin-top:10px;">
         <strong>Evidence:</strong> ${esc(f.duration_basis ? f.duration_basis.description : '')}${f.severity_basis ? ` &middot; tier from ${esc(f.severity_basis.description)}` : ''}
